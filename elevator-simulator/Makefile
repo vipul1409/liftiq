@@ -4,7 +4,7 @@ ACTIVATE  := source $(VENV)/bin/activate
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup run run-no-bacnet fault-door fault-brake fault-motor fault-safety fault-leveling clear-fault clean
+.PHONY: help setup run run-no-bacnet test test-cov fault-door fault-brake fault-motor fault-safety fault-leveling clear-fault clean
 
 help:
 	@echo ""
@@ -13,6 +13,9 @@ help:
 	@echo "  make setup            Create .venv and install dependencies"
 	@echo "  make run              Run with BACnet + HTTP API"
 	@echo "  make run-no-bacnet    Run with HTTP API only (no BACnet)"
+	@echo ""
+	@echo "  make test             Run unit tests"
+	@echo "  make test-cov         Run tests with HTML coverage report"
 	@echo ""
 	@echo "  make fault-door       Inject door_motor_degradation on ELV-003"
 	@echo "  make fault-brake      Inject brake_wear on ELV-003"
@@ -37,6 +40,12 @@ run: $(VENV)/bin/activate
 
 run-no-bacnet: $(VENV)/bin/activate
 	$(ACTIVATE) && python main.py --no-bacnet
+
+test: $(VENV)/bin/activate
+	$(ACTIVATE) && pytest tests/ -v
+
+test-cov: $(VENV)/bin/activate
+	$(ACTIVATE) && pytest tests/ -v --cov=. --cov-report=term-missing --cov-report=html
 
 # Fault injection helpers (simulator must be running in another terminal)
 fault-door:
