@@ -1,3 +1,8 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -20,15 +25,14 @@ wheels/
 .installed.cfg
 *.egg-link
 .python-version
-.venv/
-venv/
-env/
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+
+# macOS
 .DS_Store
 
 # Logs
