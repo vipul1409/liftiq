@@ -1,0 +1,21 @@
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: liftiq-timescaledb
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: liftiq
+      POSTGRES_PASSWORD: liftiq
+      POSTGRES_DB: liftiq
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U liftiq -d liftiq"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  timescaledb_data:

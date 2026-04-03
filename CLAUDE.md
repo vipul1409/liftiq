@@ -11,14 +11,32 @@ Read it before making changes.
 liftiq/
 ├── CLAUDE.md                              ← you are here
 ├── LiftIQ_Engineering_Plan_BMS_Integration.md   ← engineering blueprint
-└── elevator-simulator/                    ← Phase 1 Week 1 deliverable
-    ├── elevator_state.py                  ← ElevatorState dataclass + simulation
-    ├── bacnet_server.py                   ← BACnet/IP server (BAC0 wrapper)
-    ├── api.py                             ← FastAPI HTTP fault-injection API
-    ├── main.py                            ← entry point / orchestrator
-    ├── requirements.txt                   ← Python dependencies
-    ├── setup.sh                           ← venv creation script
-    └── Makefile                           ← developer shortcuts
+├── elevator-simulator/                    ← Phase 1 Week 1 deliverable
+│   ├── elevator_state.py                  ← ElevatorState dataclass + simulation
+│   ├── bacnet_server.py                   ← BACnet/IP server (BAC0 wrapper)
+│   ├── api.py                             ← FastAPI HTTP fault-injection API
+│   ├── main.py                            ← entry point / orchestrator
+│   ├── requirements.txt                   ← Python dependencies
+│   ├── setup.sh                           ← venv creation script
+│   ├── Makefile                           ← developer shortcuts
+│   └── tests/                             ← pytest test suite (102 tests)
+└── telemetry-ingestor/                    ← Phase 1 Week 2 deliverable
+    ├── cmd/ingestd/main.go                ← binary entry point
+    ├── internal/
+    │   ├── config/config.go               ← env-var config
+    │   ├── simulator/
+    │   │   ├── client.go                  ← HTTP client + Client interface
+    │   │   └── model.go                   ← ElevatorSnapshot JSON shape
+    │   ├── store/
+    │   │   ├── store.go                   ← Store interface + Row type
+    │   │   └── pgx.go                     ← pgxpool impl, Connect, Migrate
+    │   └── ingest/
+    │       ├── mapper.go                  ← pure snapshot → []store.Row conversion
+    │       └── poller.go                  ← 5-second poll loop
+    ├── migrations/001_schema.sql          ← TimescaleDB DDL (reference)
+    ├── docker-compose.yml                 ← TimescaleDB for local dev
+    ├── go.mod / go.sum
+    └── Makefile
 ```
 
 The overall product plan and protocol details live in
@@ -207,6 +225,89 @@ close to ASME thresholds, so injected faults become visible quickly.
 
 ---
 
+## telemetry-ingestor
+
+### Requirements
+
+| Requirement | Version |
+|---|---|
+| Go | 1.25+ |
+| TimescaleDB | 2.x on PostgreSQL 16 |
+| Docker | For local TimescaleDB |
+
+### First-time setup
+
+```bash
+cd telemetry-ingestor
+
+# Start TimescaleDB
+make docker-up
+
+# Build binary
+make build
+```
+
+### Running
+
+```bash
+# Defaults: simulator at localhost:8000, DB at localhost:5432
+make run
+
+# Or with explicit config
+DATABASE_URL="postgres://liftiq:liftiq@localhost:5432/liftiq?sslmode=disable" \
+SIMULATOR_URL="http://localhost:8000" \
+POLL_INTERVAL_SECONDS=5 \
+LOG_LEVEL=debug \
+./bin/ingestd
+```
+
+Schema migrations run automatically on every start (`store.Migrate`). All DDL is idempotent.
+
+### Environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `DATABASE_URL` | *(required)* | PostgreSQL DSN for TimescaleDB |
+| `SIMULATOR_URL` | `http://localhost:8000` | Elevator simulator base URL |
+| `POLL_INTERVAL_SECONDS` | `5` | Seconds between polls |
+| `LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` |
+
+### Tests
+
+```bash
+# Unit tests (no DB required — all external deps are faked)
+make test
+
+# With race detector
+make test-race
+```
+
+### Data flow
+
+```
+Simulator GET /elevators (every 5s)
+  → ElevatorSnapshot (20 float/bool fields per elevator)
+  → ingest.MapSnapshot → []store.Row (20 rows × 3 elevators = 60 rows/poll)
+  → store.pgxStore.WriteRows → pgx.CopyFrom → telemetry hypertable
+```
+
+### TimescaleDB schema
+
+- `elevator_units` — unit tag registry; upserted on first encounter per tag
+- `telemetry` — hypertable partitioned by `time` (7-day chunks) + space-partitioned by `unit_id` (hash, 4 buckets)
+- Index: `(unit_id, metric, time DESC)` — optimised for the compliance engine query pattern
+
+### Packages
+
+| Package | Responsibility |
+|---|---|
+| `config` | Load env vars; fail fast if `DATABASE_URL` missing |
+| `simulator` | `Client` interface + `httpClient` impl; `ElevatorSnapshot` JSON model |
+| `store` | `Store` interface; `pgxStore` (CopyFrom + upsert cache); `Connect`; `Migrate` |
+| `ingest` | `MapSnapshot` (pure); `Poller.Run` + `PollOnce` (poll loop) |
+
+---
+
 ## Code conventions
 
 - **Simulation logic** belongs in `elevator_state.py`. Keep `ElevatorState` as a
@@ -214,10 +315,12 @@ close to ASME thresholds, so injected faults become visible quickly.
 - **BACnet I/O** belongs in `bacnet_server.py`. All BAC0 imports are guarded by
   try/except so the rest of the code works without BACnet installed.
 - **HTTP I/O** belongs in `api.py`. All FastAPI imports are guarded similarly.
-- **Wiring** happens only in `main.py`.
+- **Wiring** happens only in `main.py` / `cmd/ingestd/main.go`.
 - Do not add LLM calls or probabilistic logic to the compliance rule engine
   (future `compliance/rules.go`). Safety-critical pass/fail must be deterministic
   and auditable per the engineering plan.
+- Interfaces are defined in the package that owns them (`simulator.Client`,
+  `store.Store`). Concrete implementations satisfy them without explicit declaration.
 
 ---
 
@@ -225,10 +328,9 @@ close to ASME thresholds, so injected faults become visible quickly.
 
 | Phase | Weeks | Status |
 |---|---|---|
-| Phase 1 — Simulated environment | 1–4 | Week 1 complete (this simulator) |
+| Phase 1 — Simulated environment | 1–4 | Weeks 1–2 complete |
 | Phase 2 — Voice + report generation | 5–8 | Not started |
 | Phase 3 — Real BMS integration | 9–14 | Not started |
 | Phase 4 — OEM RAG knowledge base | 12–16 | Not started |
 
-Week 2 deliverable: Go telemetry ingestion service polling this simulator
-every 5 seconds and writing to TimescaleDB.
+Week 3 deliverable: Go compliance engine mapping ASME A17.1 rules to telemetry thresholds.
