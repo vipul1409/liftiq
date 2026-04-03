@@ -240,7 +240,7 @@ close to ASME thresholds, so injected faults become visible quickly.
 ```bash
 cd telemetry-ingestor
 
-# Start TimescaleDB
+# Start TimescaleDB (waits for pg_isready before returning)
 make docker-up
 
 # Build binary
@@ -261,7 +261,21 @@ LOG_LEVEL=debug \
 ./bin/ingestd
 ```
 
-Schema migrations run automatically on every start (`store.Migrate`). All DDL is idempotent.
+Schema migrations run automatically on every start (`store.Migrate`). All DDL is idempotent — safe to re-run.
+
+### End-to-end startup (both services)
+
+```bash
+# Terminal 1 — elevator simulator
+cd elevator-simulator && make run-no-bacnet
+
+# Terminal 2 — TimescaleDB + ingestor
+cd telemetry-ingestor
+make docker-up   # one-time: starts TimescaleDB container
+make run         # builds and starts ingestd
+```
+
+Rows appear within 5 seconds of the first poll. Verify with the queries below.
 
 ### Environment variables
 
@@ -269,33 +283,141 @@ Schema migrations run automatically on every start (`store.Migrate`). All DDL is
 |---|---|---|
 | `DATABASE_URL` | *(required)* | PostgreSQL DSN for TimescaleDB |
 | `SIMULATOR_URL` | `http://localhost:8000` | Elevator simulator base URL |
-| `POLL_INTERVAL_SECONDS` | `5` | Seconds between polls |
+| `POLL_INTERVAL_SECONDS` | `5` | Seconds between polls (float OK) |
 | `LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` |
 
-### Tests
+### Makefile targets
 
-```bash
-# Unit tests (no DB required — all external deps are faked)
-make test
-
-# With race detector
-make test-race
-```
+| Target | Description |
+|---|---|
+| `make build` | Compile binary to `./bin/ingestd` |
+| `make run` | Build + run (requires TimescaleDB and simulator running) |
+| `make test` | Unit tests for `simulator`, `ingest`, `config` packages (no DB) |
+| `make test-race` | Same with Go race detector (`-race`) |
+| `make vet` | Run `go vet ./...` |
+| `make docker-up` | Start TimescaleDB container; poll until `pg_isready` |
+| `make docker-down` | Stop and remove TimescaleDB container |
+| `make docker-logs` | Tail TimescaleDB container logs |
+| `make clean` | Remove `./bin/` |
 
 ### Data flow
 
 ```
-Simulator GET /elevators (every 5s)
-  → ElevatorSnapshot (20 float/bool fields per elevator)
-  → ingest.MapSnapshot → []store.Row (20 rows × 3 elevators = 60 rows/poll)
-  → store.pgxStore.WriteRows → pgx.CopyFrom → telemetry hypertable
+Simulator  GET /elevators  (every POLL_INTERVAL_SECONDS)
+  → []ElevatorSnapshot  (one per elevator, 20 measurable fields each)
+  → ingest.LookupUnit   (upsert elevator_units; cached after first hit)
+  → ingest.MapSnapshot  → []store.Row  (20 rows × N elevators per poll)
+  → store.WriteRows     → pgx.CopyFrom → telemetry hypertable
 ```
+
+At default settings (3 elevators, 5 s interval): **60 rows/poll → 720 rows/min → ~1 M rows/day**.
+
+### Stored metrics (20 per poll per elevator)
+
+| Metric name | Source field | Go type |
+|---|---|---|
+| `motor_current_a` | `MotorCurrentA` | float64 |
+| `motor_temp_c` | `MotorTempC` | float64 |
+| `motor_rpm` | `MotorRPM` | float64 |
+| `motor_run_hours` | `MotorRunHours` | float64 |
+| `trip_count` | `TripCount` | int → float64 |
+| `door_cycle_count` | `DoorCycleCount` | int → float64 |
+| `door_motor_amps` | `DoorMotorAmps` | float64 |
+| `door_close_force_n` | `DoorCloseForceN` | float64 |
+| `door_close_time_ms` | `DoorCloseTimeMs` | int → float64 |
+| `door_obstruction_events` | `DoorObstructionEvents` | int → float64 |
+| `brake_engagement_count` | `BrakeEngagementCount` | int → float64 |
+| `brake_current_a` | `BrakeCurrentA` | float64 |
+| `brake_response_ms` | `BrakeResponseMs` | int → float64 |
+| `leveling_accuracy_mm` | `LevelingAccuracyMm` | float64 |
+| `vibration_g` | `VibrationG` | float64 |
+| `door_interlock_ok` | `DoorInterlockOk` | bool → 1.0/0.0 |
+| `governor_ok` | `GovernorOk` | bool → 1.0/0.0 |
+| `buffer_ok` | `BufferOk` | bool → 1.0/0.0 |
+| `pit_switch_ok` | `PitSwitchOk` | bool → 1.0/0.0 |
+| `safety_circuit_ok` | `SafetyCircuitOk` | bool → 1.0/0.0 |
+
+Excluded from storage: `Direction`, `DoorStatus`, `MaxFloors`, `InjectedFault` (operational/categorical fields).
 
 ### TimescaleDB schema
 
-- `elevator_units` — unit tag registry; upserted on first encounter per tag
-- `telemetry` — hypertable partitioned by `time` (7-day chunks) + space-partitioned by `unit_id` (hash, 4 buckets)
-- Index: `(unit_id, metric, time DESC)` — optimised for the compliance engine query pattern
+**`elevator_units`** — unit registry; auto-upserted on first encounter:
+
+```sql
+CREATE TABLE elevator_units (
+    id               UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    unit_tag         VARCHAR(50)  NOT NULL UNIQUE,   -- e.g. "ELV-001"
+    building_id      UUID,                            -- nullable for simulator
+    controller_make  VARCHAR(100),
+    controller_model VARCHAR(100),
+    protocol         VARCHAR(20)  NOT NULL DEFAULT 'simulator',
+    bms_address      VARCHAR(100),
+    installed_date   DATE,
+    created_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+```
+
+**`telemetry`** — narrow/long hypertable (one row per metric per poll):
+
+```sql
+CREATE TABLE telemetry (
+    time    TIMESTAMPTZ      NOT NULL,
+    unit_id UUID             NOT NULL REFERENCES elevator_units(id),
+    metric  VARCHAR(50)      NOT NULL,
+    value   DOUBLE PRECISION NOT NULL,
+    quality VARCHAR(10)      NOT NULL DEFAULT 'good'   -- 'good' | 'stale' | 'missing'
+);
+```
+
+Partitioning:
+- **Time** partition: 7-day chunks via `create_hypertable('telemetry', 'time')`
+- **Space** partition: hash by `unit_id` into 4 buckets via `add_dimension` — co-locates all data for one elevator within a chunk, speeding per-unit range queries
+- **Index**: `(unit_id, metric, time DESC)` — the primary compliance-engine access pattern
+
+### Key design decisions
+
+**pgx CopyFrom** — `WriteRows` uses `pgx.CopyFrom` (PostgreSQL COPY protocol) rather than multi-row INSERT. CopyFrom bypasses WAL parsing overhead and is the fastest bulk-insert path available through pgx. At 60 rows per poll this is overkill, but it keeps headroom when elevator count scales.
+
+**sync.Map unit cache** — `LookupUnit` caches tag→UUID in a `sync.Map` after the first DB round-trip. Subsequent polls for the same elevator never hit the database. The upsert SQL (`ON CONFLICT (unit_tag) DO UPDATE ... RETURNING id`) is idempotent so a cold restart is safe.
+
+**pgx v5 multi-statement limitation** — pgx v5 does not execute multiple SQL statements in a single `Exec` call. Migrations are stored as a `[]string` slice and executed one statement at a time. The `add_dimension` idempotency is handled with a PL/pgSQL `DO` block (no `IF NOT EXISTS` equivalent in standard TimescaleDB SQL).
+
+**Interface injection** — `simulator.Client` and `store.Store` are interfaces defined in their own packages. All tests use in-process fakes (`fakeClient`, `fakeStore`) with `sync.Mutex` protection; no real network or database is required. The `store` package is excluded from unit tests (`make test`) because it needs a live TimescaleDB.
+
+### Common verification queries
+
+```sql
+-- Row count per elevator per minute (last 10 minutes)
+SELECT
+    u.unit_tag,
+    time_bucket('1 minute', t.time) AS bucket,
+    count(*)                        AS rows
+FROM telemetry t
+JOIN elevator_units u ON u.id = t.unit_id
+WHERE t.time > NOW() - INTERVAL '10 minutes'
+GROUP BY 1, 2
+ORDER BY 2 DESC, 1;
+
+-- Latest value of every metric for ELV-003
+SELECT t.metric, t.value, t.time
+FROM telemetry t
+JOIN elevator_units u ON u.id = t.unit_id
+WHERE u.unit_tag = 'ELV-003'
+  AND t.time > NOW() - INTERVAL '1 minute'
+ORDER BY t.metric, t.time DESC;
+
+-- ASME A17.1 threshold check (last reading per metric per elevator)
+SELECT
+    u.unit_tag,
+    t.metric,
+    last(t.value, t.time) AS latest_value
+FROM telemetry t
+JOIN elevator_units u ON u.id = t.unit_id
+WHERE t.metric IN ('door_close_force_n', 'brake_response_ms', 'leveling_accuracy_mm')
+  AND t.time > NOW() - INTERVAL '10 minutes'
+GROUP BY 1, 2
+ORDER BY 1, 2;
+```
 
 ### Packages
 
@@ -304,7 +426,7 @@ Simulator GET /elevators (every 5s)
 | `config` | Load env vars; fail fast if `DATABASE_URL` missing |
 | `simulator` | `Client` interface + `httpClient` impl; `ElevatorSnapshot` JSON model |
 | `store` | `Store` interface; `pgxStore` (CopyFrom + upsert cache); `Connect`; `Migrate` |
-| `ingest` | `MapSnapshot` (pure); `Poller.Run` + `PollOnce` (poll loop) |
+| `ingest` | `MapSnapshot` (pure, no I/O); `Poller.Run` + `PollOnce` (poll loop) |
 
 ---
 
