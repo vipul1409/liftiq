@@ -10,18 +10,20 @@ NFC tap → voice-guided checklist → photo evidence → digital signature → 
 
 ## Prerequisites
 
-| Tool | Version | Notes |
-|---|---|---|
-| Python | 3.10+ | Required by elevator simulator |
-| Go | 1.25+ | Required by ingestor, compliance engine, report generator |
-| Docker | Any recent | Required for TimescaleDB |
-| Node.js | 18+ | Required for mobile app |
-| Chrome / Chromium | Latest | Required by report generator for PDF rendering |
-| Expo Dev Client | Latest | **Not** Expo Go — build required for voice + camera |
+| Tool              | Version     | Notes                                                     |
+| ----------------- | ----------- | --------------------------------------------------------- |
+| Python            | 3.10+       | Required by elevator simulator                            |
+| Go                | 1.25+       | Required by ingestor, compliance engine, report generator |
+| Docker            | Any recent  | Required for TimescaleDB                                  |
+| Node.js           | 18+         | Required for mobile app                                   |
+| Chrome/Chromium   | Latest      | Required by report generator for PDF rendering            |
+| Expo Dev Client   | Latest      | **Not** Expo Go — dev build required for voice + camera   |
 
 macOS only: `brew install libpcap` (required by BAC0 — harmless if BACnet is not used)
 
-> **Dev build required**: The mobile app uses `expo-speech-recognition` (native STT) and the camera/location APIs. Expo Go does not support these. Run `npx expo run:ios` or `npx expo run:android` once to install the dev build, then use `make mobile` for subsequent starts.
+> **Dev build required**: The mobile app uses `expo-speech-recognition` (native STT) and the
+> camera/location APIs. Expo Go does not support these. Run `npx expo run:ios` or
+> `npx expo run:android` once to install the dev build, then use `make mobile` for subsequent starts.
 
 ---
 
@@ -46,15 +48,16 @@ make mobile
 
 ## What `make demo-up` does
 
-| Step | Service | Port | Wait condition |
-|---|---|---|---|
-| 1 | TimescaleDB (Docker) | 5432 | `pg_isready` |
-| 2 | Elevator simulator | 8000 | `GET /health` → 200 |
-| 3 | Telemetry ingestor | — | process started (polls every 5 s) |
-| 4 | Compliance engine | 8080 | `GET /health` → 200 |
-| 5 | Report generator | 8082 | `GET /health` → 200 |
+| Step | Service                     | Port | Wait condition                    |
+| ---- | --------------------------- | ---- | --------------------------------- |
+| 1    | TimescaleDB (Docker)        | 5432 | `pg_isready`                      |
+| 2    | Elevator simulator          | 8000 | `GET /health` → 200               |
+| 3    | Telemetry ingestor          | —    | process started (polls every 5 s) |
+| 4    | Compliance engine           | 8080 | `GET /health` → 200               |
+| 5    | Report generator            | 8082 | `GET /health` → 200               |
 
-After ~10 seconds the ingestor writes the first batch of rows and the compliance engine begins serving live results.
+After ~10 seconds the ingestor writes the first batch of rows and the compliance engine begins
+serving live results.
 
 ---
 
@@ -66,7 +69,7 @@ make demo-status
 
 Expected output:
 
-```
+```text
 ── Service health ───────────────────────────────
   ✓ Elevator simulator   (http://localhost:8000/health)
   ✓ Compliance engine    (http://localhost:8080/health)
@@ -89,13 +92,16 @@ If you see `unknown=20` the ingestor hasn't written data yet — wait a few more
 
 ## Investor demo script
 
-This is the recommended sequence for investors. It shows the full end-to-end workflow: live telemetry → fault → voice inspection → PDF report with digital signature.
+This is the recommended sequence for investors. It shows the full end-to-end workflow:
+live telemetry → fault → voice inspection → PDF report with digital signature.
 
 ### 1. Establish baseline (2 min)
 
-Open the mobile app. Tap **Scan Elevator Tag** — the button pulses while "reading" the NFC tag (1 s simulated scan) then presents the unit picker. Select **ELV-003** (the high-mileage unit).
+Open the mobile app. Tap **Scan Elevator Tag** — the button pulses while "reading" the NFC tag
+(1 s simulated scan) then presents the unit picker. Select **ELV-003** (the high-mileage unit).
 
-Show that all 20 ASME A17.1 checks are green — live telemetry, not mock data (motor current 18+ A, door force 118 N — already near thresholds).
+Show that all 20 ASME A17.1 checks are green — live telemetry, not mock data
+(motor current 18+ A, door force 118 N — already near thresholds).
 
 ```bash
 # Also visible via curl
@@ -115,36 +121,40 @@ make demo-status   # poll every ~10 s to watch the value rise
 ```
 
 Tap **Refresh** in the app. Once `door_close_force_n` crosses 135 N:
+
 - `ASME-006` flips from **PASS** to **FAIL**
 - Overall banner turns **red**
 - Summary shows **fail=1**
 
-*"This is exactly what happens when a real door motor starts wearing out. The inspector gets an automatic flag before they open the panel."*
+> *"This is exactly what happens when a real door motor starts wearing out. The inspector gets an automatic flag before they open the panel."*
 
 ### 3. Voice-guided inspection (2 min)
 
 Tap the **mic button** at the bottom of the Compliance screen to activate voice mode.
 
 Say commands aloud:
+
 - **"next"** → advances to the next rule (reads rule aloud via TTS)
 - **"pass"** → marks current rule pass
 - **"fail"** → marks fail + opens camera for photo evidence
 - **"take photo"** → captures photo with GPS tag for the current rule
 - **"skip"** → skips without recording
 
-*"The technician never touches the screen — hands-free compliance logging while physically inspecting the elevator."*
+> *"The technician never touches the screen — hands-free compliance logging while physically inspecting the elevator."*
 
 ### 4. Photo evidence (1 min)
 
-On `ASME-006`, tap **Photo** (or say "take photo"). The camera opens. Capture a photo of the door mechanism. It appears as a GPS-tagged thumbnail attached to the rule.
+On `ASME-006`, tap **Photo** (or say "take photo"). The camera opens. Capture a photo of the
+door mechanism. It appears as a GPS-tagged thumbnail attached to the rule.
 
 If the rule is failed, the camera opens automatically after the voice "fail" command.
 
 ### 5. Manual override (1 min)
 
-Some checks need a physical gauge (e.g., door close force). Tap **Override Pass** on `ASME-006`. The badge changes to **PASS (manual)**.
+Some checks need a physical gauge (e.g., door close force). Tap **Override Pass** on `ASME-006`.
+The badge changes to **PASS (manual)**.
 
-*"The inspector overrides directly in the app. Manual results are captured alongside auto-evaluated ones and appear in the final report."*
+> *"The inspector overrides directly in the app. Manual results are captured alongside auto-evaluated ones and appear in the final report."*
 
 ### 6. Generate PDF report with digital signature (2 min)
 
@@ -153,6 +163,7 @@ Tap **View Summary** → **Proceed to Sign**.
 On the signature screen, draw a signature with your finger. Tap **Sign & Generate PDF**.
 
 The app:
+
 1. Converts all photos to base64
 2. POSTs the full inspection to the report generator (`localhost:8082`)
 3. The report generator renders an ASME A17.1-formatted HTML page via `html/template`
@@ -160,6 +171,7 @@ The app:
 5. The PDF is saved and the system share sheet appears
 
 Open the PDF and show:
+
 - LiftIQ header, unit tag, inspection date
 - Pass/fail banner with rule counts
 - Full 20-rule table grouped by subsystem (Motor, Door Operator, Brake System, etc.)
@@ -169,7 +181,8 @@ Open the PDF and show:
 ### 7. Close (30 sec)
 
 Point at the six-layer architecture:
-```
+
+```text
 Simulated BACnet elevator
   → Go telemetry ingestor → TimescaleDB
   → Go compliance engine (20 ASME A17.1 rules)
@@ -192,32 +205,34 @@ For a technician audience, focus on time savings and workflow:
 5. Tap **View Summary** → **Proceed to Sign** → draw signature → **Sign & Generate PDF**
 6. Share the PDF instantly from the device
 
-Key message: *"You used to fill this out by hand after the inspection and type it up later. Now the checklist is pre-filled, you inspect hands-free with voice, photos are GPS-tagged automatically, and the signed PDF is generated on-site in seconds."*
+> *"You used to fill this out by hand after the inspection and type it up later. Now the checklist
+> is pre-filled, you inspect hands-free with voice, photos are GPS-tagged automatically, and the
+> signed PDF is generated on-site in seconds."*
 
 ---
 
 ## Voice command reference
 
-| What you say | Intent | Action |
-|---|---|---|
-| "pass" / "looks good" / "ok" | `pass` | Mark current rule pass |
-| "fail" / "failed" / "no good" | `fail` | Mark fail + open camera |
-| "next" / "confirmed" | `next` | Advance to next rule (read aloud) |
-| "skip" | `skip` | Skip current rule, advance |
-| "take photo" / "photo" | `photo` | Open camera for current rule |
-| "stop" / "done" | `stop` | Deactivate voice mode |
+| What you say                   | Intent  | Action                            |
+| ------------------------------ | ------- | --------------------------------- |
+| "pass" / "looks good" / "ok"   | `pass`  | Mark current rule pass            |
+| "fail" / "failed" / "no good"  | `fail`  | Mark fail + open camera           |
+| "next" / "confirmed"           | `next`  | Advance to next rule (read aloud) |
+| "skip"                         | `skip`  | Skip current rule, advance        |
+| "take photo" / "photo"         | `photo` | Open camera for current rule      |
+| "stop" / "done"                | `stop`  | Deactivate voice mode             |
 
 ---
 
 ## Fault types reference
 
-| Command | Fault | ASME rule that trips | Threshold |
-|---|---|---|---|
-| `make fault-door` | Door motor degradation | ASME-006 | 135 N close force |
-| `make fault-brake` | Brake wear | ASME-011 | 80 ms response time |
-| `make fault-motor` | Motor bearing wear | ASME-001 | 20 A motor current |
-| `make fault-safety` | Safety circuit intermittent | ASME-020 | circuit must be continuous |
-| `make fault-leveling` | Leveling drift | ASME-014 | 12.7 mm (½ inch ADA) |
+| Command               | Fault                        | ASME rule that trips | Threshold                  |
+| --------------------- | ---------------------------- | -------------------- | -------------------------- |
+| `make fault-door`     | Door motor degradation       | ASME-006             | 135 N close force          |
+| `make fault-brake`    | Brake wear                   | ASME-011             | 80 ms response time        |
+| `make fault-motor`    | Motor bearing wear           | ASME-001             | 20 A motor current         |
+| `make fault-safety`   | Safety circuit intermittent  | ASME-020             | circuit must be continuous |
+| `make fault-leveling` | Leveling drift               | ASME-014             | 12.7 mm (half inch ADA)    |
 
 ```bash
 make clear-fault   # clear any active fault on ELV-003
@@ -229,38 +244,44 @@ make clear-fault   # clear any active fault on ELV-003
 
 If you prefer separate terminals to see logs live:
 
-**Terminal 1 — TimescaleDB**
+#### Terminal 1 — TimescaleDB
+
 ```bash
 cd telemetry-ingestor
 make docker-up
 ```
 
-**Terminal 2 — Elevator simulator**
+#### Terminal 2 — Elevator simulator
+
 ```bash
 cd elevator-simulator
 make setup          # first time only
 make run-no-bacnet
 ```
 
-**Terminal 3 — Telemetry ingestor**
+#### Terminal 3 — Telemetry ingestor
+
 ```bash
 cd telemetry-ingestor
 make run
 ```
 
-**Terminal 4 — Compliance engine**
+#### Terminal 4 — Compliance engine
+
 ```bash
 cd compliance-engine
 make run
 ```
 
-**Terminal 5 — Report generator**
+#### Terminal 5 — Report generator
+
 ```bash
 cd report-generator
 make run
 ```
 
-**Terminal 6 — Mobile app**
+#### Terminal 6 — Mobile app
+
 ```bash
 cd liftiq-mobile
 make mobile         # or: npx expo run:ios
@@ -270,18 +291,19 @@ make mobile         # or: npx expo run:ios
 
 ## Environment variables
 
-| Variable | Service | Default | Description |
-|---|---|---|---|
-| `HTTP_PORT` | compliance-engine | `8080` | HTTP listen port |
-| `HTTP_PORT` | report-generator | `8082` | HTTP listen port |
-| `DATABASE_URL` | compliance-engine, ingestor | — | PostgreSQL DSN |
-| `STALE_WINDOW_MINUTES` | compliance-engine | `10` | Age at which telemetry is flagged stale |
-| `LOG_LEVEL` | all Go services | `info` | `debug` / `info` / `warn` / `error` |
-| `EXPO_PUBLIC_COMPLIANCE_API_URL` | mobile | `http://localhost:8080` | Compliance engine base URL |
-| `EXPO_PUBLIC_REPORT_API_URL` | mobile | `http://localhost:8082` | Report generator base URL |
+| Variable                          | Service                      | Default                 | Description                             |
+| --------------------------------- | ---------------------------- | ----------------------- | --------------------------------------- |
+| `HTTP_PORT`                       | compliance-engine            | `8080`                  | HTTP listen port                        |
+| `HTTP_PORT`                       | report-generator             | `8082`                  | HTTP listen port                        |
+| `DATABASE_URL`                    | compliance-engine, ingestor  | —                       | PostgreSQL DSN                          |
+| `STALE_WINDOW_MINUTES`            | compliance-engine            | `10`                    | Age at which telemetry is flagged stale |
+| `LOG_LEVEL`                       | all Go services              | `info`                  | `debug` / `info` / `warn` / `error`     |
+| `EXPO_PUBLIC_COMPLIANCE_API_URL`  | mobile                       | `http://localhost:8080` | Compliance engine base URL              |
+| `EXPO_PUBLIC_REPORT_API_URL`      | mobile                       | `http://localhost:8082` | Report generator base URL               |
 
 For Android Emulator, update `liftiq-mobile/.env`:
-```
+
+```bash
 EXPO_PUBLIC_COMPLIANCE_API_URL=http://10.0.2.2:8080
 EXPO_PUBLIC_REPORT_API_URL=http://10.0.2.2:8082
 ```
@@ -294,9 +316,11 @@ EXPO_PUBLIC_REPORT_API_URL=http://10.0.2.2:8082
 make demo-down
 ```
 
-This stops all background processes and removes the TimescaleDB container (data is preserved in the Docker volume `timescaledb_data`).
+This stops all background processes and shuts down the TimescaleDB container (data is preserved
+in the Docker volume `timescaledb_data`).
 
 To also delete the database volume:
+
 ```bash
 cd telemetry-ingestor
 docker compose down -v
@@ -306,30 +330,63 @@ docker compose down -v
 
 ## Troubleshooting
 
-**`demo-status` shows `unknown` for all metrics**
+### `demo-status` shows `unknown` for all metrics
+
 The ingestor hasn't written data yet. Check:
+
 ```bash
 make logs-ingestor
 ```
+
 Look for `"msg":"poll complete"` lines. If absent, confirm the simulator is running on port 8000.
 
-**Report generator returns 500**
-Chrome/Chromium must be installed and on `$PATH`. On macOS: `brew install --cask google-chrome`. The `chromedp` library auto-discovers Chrome.
+### Report generator returns 500
 
-**`make demo-up` fails at TimescaleDB step**
+Chrome/Chromium must be installed and discoverable. On macOS:
+
+```bash
+brew install --cask google-chrome
+```
+
+The `chromedp` library auto-discovers Chrome on `$PATH` and in standard install locations.
+
+### `make demo-down` fails with Docker API error
+
+Docker Desktop may not be running, or the socket version may have changed after an upgrade.
+Start Docker Desktop and retry. If it still fails, stop the TimescaleDB container manually:
+
+```bash
+cd telemetry-ingestor && docker compose down
+```
+
+### `make demo-up` fails at TimescaleDB step
+
 Docker may not be running. Start Docker Desktop and retry.
 
-**Voice commands not recognised**
-The STT engine requires a native dev build. If you see "permission denied" or the mic button does nothing, rebuild: `npx expo run:ios` and grant microphone permission when prompted.
+### Voice commands not recognised
 
-**iOS Simulator can't reach backend services**
-iOS Simulator uses `localhost` correctly. For a physical device, set `EXPO_PUBLIC_COMPLIANCE_API_URL` and `EXPO_PUBLIC_REPORT_API_URL` in `liftiq-mobile/.env` to your machine's LAN IP.
+The STT engine requires a native dev build. If the mic button does nothing, rebuild:
 
-**Simulator venv missing**
+```bash
+cd liftiq-mobile && npx expo run:ios
+```
+
+Grant microphone permission when prompted.
+
+### iOS Simulator can't reach backend services
+
+iOS Simulator uses `localhost` correctly. For a physical device, set both API URLs in
+`liftiq-mobile/.env` to your machine's LAN IP (e.g., `http://192.168.1.x:8080`).
+
+### PDF share sheet not appearing
+
+`expo-sharing` requires a physical device or simulator with share targets. On bare iOS Simulator
+use AirDrop or Mail to open the PDF, or check the saved path logged in the console.
+
+### Simulator venv missing
+
 `demo-start.sh` runs `./setup.sh` automatically if `.venv` is absent. To rebuild manually:
+
 ```bash
 cd elevator-simulator && rm -rf .venv && make setup
 ```
-
-**PDF share sheet not appearing**
-`expo-sharing` requires a physical device or simulator with a share target installed. On bare iOS Simulator the share sheet may show limited options — use AirDrop or Mail to open the PDF.

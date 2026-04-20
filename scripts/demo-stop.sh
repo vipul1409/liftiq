@@ -8,11 +8,13 @@ PID_DIR="/tmp"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
 info()    { echo -e "${BLUE}[liftiq]${NC} $*"; }
 success() { echo -e "${GREEN}[liftiq]${NC} $*"; }
+warn()    { echo -e "${YELLOW}[liftiq]${NC} $*"; }
 
 stop_pid() {
   local name=$1 pidfile="$PID_DIR/liftiq-${1}.pid"
@@ -38,8 +40,12 @@ stop_pid simulator
 
 info "Stopping TimescaleDB…"
 cd "$REPO_ROOT/telemetry-ingestor"
-docker compose down
-success "TimescaleDB stopped"
+if docker info > /dev/null 2>&1; then
+  docker compose down
+  success "TimescaleDB stopped"
+else
+  warn "Docker is not running — skipping TimescaleDB shutdown (container will stop when Docker starts)"
+fi
 
 echo ""
 success "All LiftIQ services stopped."
