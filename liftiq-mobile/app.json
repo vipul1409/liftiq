@@ -13,7 +13,14 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "Allow LiftIQ to recognize your voice for hands-free inspection.",
+        "NSMicrophoneUsageDescription": "Allow LiftIQ to use the microphone for voice inspection commands.",
+        "NSCameraUsageDescription": "Allow LiftIQ to capture photo evidence during elevator inspections.",
+        "NSLocationWhenInUseUsageDescription": "Allow LiftIQ to tag inspection photos with GPS coordinates."
+      },
+      "bundleIdentifier": "com.vipul1409.liftiqmobile"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +28,13 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "package": "com.vipul1409.liftiqmobile"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -32,6 +45,19 @@
         {
           "microphonePermission": "Allow LiftIQ to use the microphone for voice inspection commands.",
           "speechRecognitionPermission": "Allow LiftIQ to recognize your voice for hands-free inspection."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow LiftIQ to access your photo library.",
+          "cameraPermission": "Allow LiftIQ to capture photo evidence during elevator inspections."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow LiftIQ to tag inspection photos with GPS coordinates."
         }
       ]
     ]

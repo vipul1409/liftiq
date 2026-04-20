@@ -14,7 +14,9 @@ import { StatusBadge } from '../components/StatusBadge';
 import { VoiceBar } from '../components/VoiceBar';
 import { useCompliance } from '../hooks/useCompliance';
 import { useOverrides } from '../store/overrides';
+import { usePhotos } from '../store/photos';
 import { useVoice } from '../hooks/useVoice';
+import { useCamera } from '../hooks/useCamera';
 import { effectiveStatus } from '../store/overrides';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import type { RuleResult } from '../types/compliance';
@@ -54,6 +56,8 @@ export function ComplianceScreen({ route, navigation }: Props) {
   const { unitTag } = route.params;
   const { data, loading, error, refetch } = useCompliance(unitTag);
   const { overrides, setOverride, clearOverride } = useOverrides();
+  const { addPhoto, removePhoto, getPhotos } = usePhotos();
+  const camera = useCamera();
 
   const sections = useMemo(
     () => (data ? groupResults(data.results) : []),
@@ -96,6 +100,12 @@ export function ComplianceScreen({ route, navigation }: Props) {
     setReadText(`${rule.rule_id}: ${rule.description}. Status: ${status}.`);
   }, [activeRuleId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Capture a photo for a rule and store it.
+  const capturePhoto = useCallback(async (ruleId: string) => {
+    const photo = await camera.capture(ruleId);
+    if (photo) addPhoto(photo);
+  }, [camera, addPhoto]);
+
   const handleIntent = useCallback(
     (intent: VoiceIntent) => {
       if (!activeRuleId) return;
@@ -106,7 +116,8 @@ export function ComplianceScreen({ route, navigation }: Props) {
           break;
         case 'fail':
           setOverride(activeRuleId, 'fail');
-          setReadText('Marked fail.');
+          setReadText('Marked fail. Opening camera for evidence.');
+          capturePhoto(activeRuleId);
           break;
         case 'skip':
           setReadText('Skipped.');
@@ -117,6 +128,7 @@ export function ComplianceScreen({ route, navigation }: Props) {
           break;
         case 'photo':
           setReadText('Opening camera.');
+          capturePhoto(activeRuleId);
           break;
         case 'stop':
           setReadText('Voice stopped.');
@@ -126,7 +138,7 @@ export function ComplianceScreen({ route, navigation }: Props) {
           break;
       }
     },
-    [activeRuleId, setOverride, advanceCursor],
+    [activeRuleId, setOverride, advanceCursor, capturePhoto],
   );
 
   const voice = useVoice({
@@ -170,6 +182,9 @@ export function ComplianceScreen({ route, navigation }: Props) {
             onOverride={setOverride}
             onClearOverride={clearOverride}
             isActive={item.rule_id === activeRuleId}
+            photos={getPhotos(item.rule_id)}
+            onCapturePhoto={camera.hasPermission ? capturePhoto : undefined}
+            onRemovePhoto={removePhoto}
           />
         )}
         renderSectionHeader={({ section }) => (

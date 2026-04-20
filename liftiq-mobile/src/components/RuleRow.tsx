@@ -1,8 +1,10 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { StatusBadge } from './StatusBadge';
+import { PhotoStrip } from './PhotoStrip';
 import { effectiveStatus } from '../store/overrides';
 import type { RuleResult } from '../types/compliance';
+import type { CapturedPhoto } from '../store/photos';
 
 interface Props {
   result: RuleResult;
@@ -10,9 +12,21 @@ interface Props {
   onOverride: (ruleId: string, status: 'pass' | 'fail') => void;
   onClearOverride: (ruleId: string) => void;
   isActive?: boolean;
+  photos?: CapturedPhoto[];
+  onCapturePhoto?: (ruleId: string) => void;
+  onRemovePhoto?: (ruleId: string, uri: string) => void;
 }
 
-export function RuleRow({ result, override, onOverride, onClearOverride, isActive = false }: Props) {
+export function RuleRow({
+  result,
+  override,
+  onOverride,
+  onClearOverride,
+  isActive = false,
+  photos = [],
+  onCapturePhoto,
+  onRemovePhoto,
+}: Props) {
   const effective = effectiveStatus(result.status, override);
 
   return (
@@ -51,7 +65,22 @@ export function RuleRow({ result, override, onOverride, onClearOverride, isActiv
             <Text style={styles.btnText}>Clear</Text>
           </TouchableOpacity>
         )}
+        {onCapturePhoto && (
+          <TouchableOpacity
+            style={[styles.btn, styles.btnPhoto]}
+            onPress={() => onCapturePhoto(result.rule_id)}
+          >
+            <Text style={styles.btnText}>📷 Photo</Text>
+          </TouchableOpacity>
+        )}
       </View>
+
+      {onRemovePhoto && (
+        <PhotoStrip
+          photos={photos}
+          onRemove={(uri) => onRemovePhoto(result.rule_id, uri)}
+        />
+      )}
     </View>
   );
 }
@@ -123,6 +152,10 @@ const styles = StyleSheet.create({
   btnClear: {
     borderColor: '#d1d5db',
     backgroundColor: '#f9fafb',
+  },
+  btnPhoto: {
+    borderColor: '#93c5fd',
+    backgroundColor: '#eff6ff',
   },
   btnActive: {
     opacity: 0.5,
