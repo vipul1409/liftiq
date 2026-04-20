@@ -15,7 +15,17 @@ liftiq/
 ├── scripts/
 │   ├── demo-start.sh                      ← start all services with health checks
 │   ├── demo-stop.sh                       ← stop all services
-│   └── demo-status.sh                     ← health check + live compliance summary
+│   ├── demo-status.sh                     ← health check + live compliance summary
+│   └── db-reset.sh                        ← truncate or drop all TimescaleDB data
+├── deploy/
+│   ├── docker-compose.yml                 ← base service definitions
+│   ├── docker-compose.local.yml           ← local overlay (ports, debug)
+│   ├── docker-compose.dev.yml             ← dev overlay (restart, debug)
+│   ├── docker-compose.prod.yml            ← prod overlay (limits, warn logging)
+│   └── env/
+│       ├── .env.local                     ← local defaults
+│       ├── .env.dev                       ← dev defaults
+│       └── .env.prod.example              ← prod template (copy → .env.prod)
 ├── LiftIQ_Engineering_Plan_BMS_Integration.md   ← engineering blueprint
 ├── elevator-simulator/                    ← Phase 1 Week 1 deliverable
 │   ├── elevator_state.py                  ← ElevatorState dataclass + simulation
@@ -487,6 +497,67 @@ ORDER BY 1, 2;
   and auditable per the engineering plan.
 - Interfaces are defined in the package that owns them (`simulator.Client`,
   `store.Store`). Concrete implementations satisfy them without explicit declaration.
+
+---
+
+## Docker deployment
+
+Every backend service has a `Dockerfile`. Environment-specific compose overlays live in `deploy/`.
+
+### Directory layout
+
+```
+deploy/
+├── docker-compose.yml          ← base: shared service definitions (no ports/restart)
+├── docker-compose.local.yml    ← local: all ports exposed, debug logging, faster ticks
+├── docker-compose.dev.yml      ← dev: restart on-failure, debug logging
+├── docker-compose.prod.yml     ← prod: always-restart, resource limits, warn logging
+└── env/
+    ├── .env.local               ← local defaults (safe to commit)
+    ├── .env.dev                 ← dev defaults (fill in before deploying)
+    └── .env.prod.example        ← prod template (copy to .env.prod, never commit)
+```
+
+### Makefile targets
+
+| Target | Description |
+|---|---|
+| `make compose-local` | Build + start full stack (foreground, all ports) |
+| `make compose-dev` | Build + start full stack (detached) |
+| `make compose-prod` | Build + start full stack (detached, requires `.env.prod`) |
+| `make compose-down` | Stop and remove all containers |
+| `make compose-build` | Build all images without starting |
+
+### First-time prod setup
+
+```bash
+cp deploy/env/.env.prod.example deploy/env/.env.prod
+# edit .env.prod — set DB_PASSWORD to a strong value
+make compose-prod
+```
+
+### Environment variables
+
+All three environments share the same variable names. Defaults are set in the base compose file (`${VAR:-default}`).
+
+| Variable | Local | Dev | Prod |
+|---|---|---|---|
+| `DB_PASSWORD` | `liftiq` | set in `.env.dev` | set in `.env.prod` |
+| `LOG_LEVEL` | `debug` | `debug` | `warn` |
+| `STALE_WINDOW` | `60` min | `10` min | `5` min |
+| `POLL_INTERVAL` | `5` s | `5` s | `5` s |
+| `TICK_INTERVAL` | `0.5` s | `1.0` s | `1.0` s |
+
+### Database reset
+
+```bash
+make db-reset         # truncate all data, keep schema
+make db-reset-hard    # drop all tables (ingestor re-migrates on next start)
+
+# Against a remote host
+DATABASE_URL="postgres://liftiq:pass@myhost:5432/liftiq?sslmode=disable" \
+  ./scripts/db-reset.sh
+```
 
 ---
 

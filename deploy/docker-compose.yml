@@ -1,0 +1,67 @@
+# Base service definitions — shared across all environments.
+# Use with an environment overlay:
+#   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.local.yml ...
+#
+# Never run this file alone — it has no ports or restart policies by itself.
+
+services:
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: liftiq-timescaledb
+    environment:
+      POSTGRES_USER:     ${DB_USER:-liftiq}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-liftiq}
+      POSTGRES_DB:       ${DB_NAME:-liftiq}
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-liftiq} -d ${DB_NAME:-liftiq}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  simulator:
+    build:
+      context: ../elevator-simulator
+      dockerfile: Dockerfile
+    container_name: liftiq-simulator
+    environment:
+      LIFTIQ_HTTP_PORT:      "8000"
+      LIFTIQ_TICK_INTERVAL:  "${TICK_INTERVAL:-1.0}"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+
+  ingestor:
+    build:
+      context: ../telemetry-ingestor
+      dockerfile: Dockerfile
+    container_name: liftiq-ingestor
+    environment:
+      DATABASE_URL:           "postgres://${DB_USER:-liftiq}:${DB_PASSWORD:-liftiq}@timescaledb:5432/${DB_NAME:-liftiq}?sslmode=disable"
+      SIMULATOR_URL:          "http://simulator:8000"
+      POLL_INTERVAL_SECONDS:  "${POLL_INTERVAL:-5}"
+      LOG_LEVEL:              "${LOG_LEVEL:-info}"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      simulator:
+        condition: service_healthy
+
+  compliance:
+    build:
+      context: ../compliance-engine
+      dockerfile: Dockerfile
+    container_name: liftiq-compliance
+    environment:
+      DATABASE_URL:           "postgres://${DB_USER:-liftiq}:${DB_PASSWORD:-liftiq}@timescaledb:5432/${DB_NAME:-liftiq}?sslmode=disable"
+      HTTP_PORT:              "8080"
+      STALE_WINDOW_MINUTES:   "${STALE_WINDOW:-10}"
+      LOG_LEVEL:              "${LOG_LEVEL:-info}"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+
+volumes:
+  timescaledb_data:

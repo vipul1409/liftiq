@@ -1,0 +1,32 @@
+# Dev environment overlay.
+# Services restart on failure, debug logging on, DB port exposed for devs.
+# Usage:
+#   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.dev.yml \
+#     --env-file deploy/env/.env.dev up --build -d
+
+services:
+
+  timescaledb:
+    restart: on-failure
+    ports:
+      - "5432:5432"
+
+  simulator:
+    restart: on-failure
+    ports:
+      - "8000:8000"
+    environment:
+      LIFTIQ_TICK_INTERVAL: "1.0"
+
+  ingestor:
+    restart: on-failure
+    environment:
+      LOG_LEVEL: debug
+
+  compliance:
+    restart: on-failure
+    ports:
+      - "8080:8080"
+    environment:
+      LOG_LEVEL:            debug
+      STALE_WINDOW_MINUTES: "10"

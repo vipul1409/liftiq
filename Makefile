@@ -3,24 +3,38 @@
 .PHONY: help demo-up demo-down demo-status \
         fault-door fault-brake fault-motor fault-safety fault-leveling clear-fault \
         logs-simulator logs-ingestor logs-compliance \
-        mobile
+        mobile \
+        compose-local compose-dev compose-prod compose-down compose-build \
+        db-reset db-reset-hard
 
 # ── Help ────────────────────────────────────────────────────────────────────
 
 help:
 	@echo ""
-	@echo "LiftIQ — Phase 1 demo orchestration"
+	@echo "LiftIQ — orchestration"
 	@echo ""
-	@echo "  make demo-up          Start all services (TimescaleDB, simulator, ingestor, compliance engine)"
+	@echo "  Local demo (native processes, fastest iteration)"
+	@echo "  make demo-up          Start all services via scripts"
 	@echo "  make demo-down        Stop all services"
-	@echo "  make demo-status      Health check + live compliance summary for all elevators"
+	@echo "  make demo-status      Health check + live compliance summary"
 	@echo ""
-	@echo "  Fault injection (ELV-003 must be ingesting — run demo-up first)"
-	@echo "  make fault-door       Inject door_motor_degradation"
-	@echo "  make fault-brake      Inject brake_wear"
-	@echo "  make fault-motor      Inject motor_bearing_wear"
-	@echo "  make fault-safety     Inject safety_circuit_intermittent"
-	@echo "  make fault-leveling   Inject leveling_drift"
+	@echo "  Docker environments"
+	@echo "  make compose-local    Build + start full stack (local, ports exposed)"
+	@echo "  make compose-dev      Build + start full stack (dev, detached)"
+	@echo "  make compose-prod     Build + start full stack (prod, detached)"
+	@echo "  make compose-down     Stop and remove all containers"
+	@echo "  make compose-build    Build all Docker images without starting"
+	@echo ""
+	@echo "  Database"
+	@echo "  make db-reset         Truncate all data (keep schema)"
+	@echo "  make db-reset-hard    Drop all tables (schema reset)"
+	@echo ""
+	@echo "  Fault injection (simulator must be running)"
+	@echo "  make fault-door       Inject door_motor_degradation on ELV-003"
+	@echo "  make fault-brake      Inject brake_wear on ELV-003"
+	@echo "  make fault-motor      Inject motor_bearing_wear on ELV-003"
+	@echo "  make fault-safety     Inject safety_circuit_intermittent on ELV-003"
+	@echo "  make fault-leveling   Inject leveling_drift on ELV-003"
 	@echo "  make clear-fault      Clear injected fault on ELV-003"
 	@echo ""
 	@echo "  Logs"
@@ -86,6 +100,41 @@ logs-ingestor:
 
 logs-compliance:
 	tail -f /tmp/liftiq-compliance.log
+
+# ── Docker environments ───────────────────────────────────────────────────────
+
+COMPOSE_BASE := docker compose -f deploy/docker-compose.yml
+
+compose-local:
+	$(COMPOSE_BASE) -f deploy/docker-compose.local.yml \
+	  --env-file deploy/env/.env.local \
+	  up --build
+
+compose-dev:
+	$(COMPOSE_BASE) -f deploy/docker-compose.dev.yml \
+	  --env-file deploy/env/.env.dev \
+	  up --build -d
+
+compose-prod:
+	@test -f deploy/env/.env.prod || \
+	  (echo "ERROR: deploy/env/.env.prod not found. Copy .env.prod.example and fill in secrets." && exit 1)
+	$(COMPOSE_BASE) -f deploy/docker-compose.prod.yml \
+	  --env-file deploy/env/.env.prod \
+	  up --build -d
+
+compose-down:
+	$(COMPOSE_BASE) down
+
+compose-build:
+	$(COMPOSE_BASE) build
+
+# ── Database ──────────────────────────────────────────────────────────────────
+
+db-reset:
+	./scripts/db-reset.sh
+
+db-reset-hard:
+	./scripts/db-reset.sh --hard
 
 # ── Mobile ───────────────────────────────────────────────────────────────────
 

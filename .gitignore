@@ -42,6 +42,13 @@ wheels/
 .env
 .env.local
 
+# Deploy secrets — never commit real env files
+deploy/env/.env.prod
+deploy/env/.env.dev.local
+
+# Build artifacts
+**/bin/
+
 # Test artifacts
 .pytest_cache/
 .coverage

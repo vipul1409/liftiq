@@ -1,0 +1,54 @@
+# Production environment overlay.
+# Always-restart policy, resource limits, no DB port exposed, warn-level logging.
+# Usage:
+#   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.prod.yml \
+#     --env-file deploy/env/.env.prod up --build -d
+#
+# IMPORTANT: copy deploy/env/.env.prod.example to deploy/env/.env.prod,
+# fill in real secrets, and never commit .env.prod to git.
+
+services:
+
+  timescaledb:
+    restart: always
+    # DB port intentionally NOT exposed in prod — access via internal network only
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+
+  simulator:
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      LIFTIQ_TICK_INTERVAL: "1.0"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  ingestor:
+    restart: always
+    environment:
+      LOG_LEVEL: warn
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+
+  compliance:
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      LOG_LEVEL:            warn
+      STALE_WINDOW_MINUTES: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
