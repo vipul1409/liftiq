@@ -67,27 +67,33 @@ liftiq/
 │   │       └── pgx.go                     ← pgxpool impl (DISTINCT ON latest-per-metric)
 │   ├── go.mod / go.sum
 │   └── Makefile
-└── liftiq-mobile/                         ← Phase 1 Week 4 deliverable
+└── liftiq-mobile/                         ← Phase 1 Week 4 + Phase 2 Week 5 deliverable
     ├── App.tsx                            ← entry point (NavigationContainer)
-    ├── app.json                           ← Expo config
+    ├── app.json                           ← Expo config (bundleId, permissions, plugins)
     ├── .env                               ← EXPO_PUBLIC_COMPLIANCE_API_URL
     ├── Makefile                           ← developer shortcuts
     ├── src/
     │   ├── api/
     │   │   ├── client.ts                  ← base fetch wrapper (ApiError, timeout)
     │   │   └── compliance.ts              ← getUnits, getCompliance wrappers
-    │   ├── types/compliance.ts            ← TypeScript interfaces (mirrors Go API shapes)
+    │   ├── types/
+    │   │   ├── compliance.ts              ← TypeScript interfaces (mirrors Go API shapes)
+    │   │   └── voice.ts                   ← VoiceIntent union + VoiceState interface
+    │   ├── utils/
+    │   │   └── intentParser.ts            ← pure keyword → VoiceIntent function
     │   ├── screens/
     │   │   ├── ScanScreen.tsx             ← NFC stub + unit picker
-    │   │   ├── ComplianceScreen.tsx       ← 20-rule checklist with overrides
+    │   │   ├── ComplianceScreen.tsx       ← 20-rule checklist, overrides, voice cursor
     │   │   └── SummaryScreen.tsx          ← pass/fail banner + counts
     │   ├── components/
-    │   │   ├── RuleRow.tsx                ← single rule card + override buttons
+    │   │   ├── RuleRow.tsx                ← single rule card + override buttons + isActive highlight
     │   │   ├── StatusBadge.tsx            ← pass/fail/unknown colored pill
-    │   │   └── UnitPicker.tsx             ← modal bottom sheet for unit selection
+    │   │   ├── UnitPicker.tsx             ← modal bottom sheet for unit selection
+    │   │   └── VoiceBar.tsx               ← floating mic button + pulse/speaking-dots animation
     │   ├── hooks/
     │   │   ├── useCompliance.ts           ← fetch compliance report + refetch
-    │   │   └── useUnits.ts                ← fetch unit list
+    │   │   ├── useUnits.ts                ← fetch unit list
+    │   │   └── useVoice.ts                ← STT lifecycle, intent dispatch, TTS readback
     │   ├── store/overrides.ts             ← in-memory manual pass/fail overrides
     │   └── navigation/AppNavigator.tsx    ← native-stack: Scan → Compliance → Summary
     └── package.json
@@ -575,57 +581,85 @@ DATABASE_URL="postgres://liftiq:pass@myhost:5432/liftiq?sslmode=disable" \
 ```bash
 cd liftiq-mobile
 npm install
+npx expo prebuild      # generates ios/ and android/ native projects (required for voice)
 ```
+
+`prebuild` is required because `expo-speech-recognition` links native modules (iOS `SFSpeechRecognizer`, Android `SpeechRecognizer`). Expo Go does not support it.
 
 ### Running
 
 ```bash
-# Start Metro bundler (opens QR code for Expo Go)
-make start          # or: npx expo start
-
-# Open directly in simulator
-make ios            # iOS Simulator (localhost works)
-make android        # Android Emulator (use http://10.0.2.2:8080 in .env)
+# Development build (required — Expo Go does not support expo-speech-recognition)
+make ios            # builds and runs on iOS Simulator / connected device
+make android        # builds and runs on Android Emulator / connected device
 ```
+
+> **iOS Simulator caveat:** `SFSpeechRecognizer` does not function in the simulator. Voice commands require a physical iOS device or Android Emulator.
 
 ### Environment
 
 Edit `.env` to point at the compliance engine:
 
 ```
-EXPO_PUBLIC_COMPLIANCE_API_URL=http://localhost:8080       # iOS Simulator / web
+EXPO_PUBLIC_COMPLIANCE_API_URL=http://localhost:8080       # iOS device on same network
 EXPO_PUBLIC_COMPLIANCE_API_URL=http://10.0.2.2:8080        # Android Emulator
-EXPO_PUBLIC_COMPLIANCE_API_URL=http://192.168.x.x:8080     # physical device
+EXPO_PUBLIC_COMPLIANCE_API_URL=http://192.168.x.x:8080     # physical device (LAN IP)
 ```
 
 ### App flow
 
 1. **Scan screen** — tap "Scan Elevator Tag" (NFC stub) → picker shows all units from `GET /units`
-2. **Compliance screen** — displays all 20 ASME A17.1 rule results grouped by subsystem; each rule has override pass/fail buttons for manual inspection items
+2. **Compliance screen** — displays all 20 ASME A17.1 rules grouped by subsystem; active rule highlighted with blue border; VoiceBar for push-to-talk inspection
 3. **Summary screen** — overall pass/fail banner, per-category counts
+
+### Voice-to-command (Phase 2 Week 5)
+
+The VoiceBar floats above the footer on the Compliance screen. Tap the mic button to start push-to-talk recognition.
+
+| Intent | Trigger phrases | Action |
+|---|---|---|
+| `pass` | "pass", "passed", "looks good", "ok" | `setOverride(activeRule, 'pass')` + TTS "Marked pass." |
+| `fail` | "fail", "failed", "no good", "bad" | `setOverride(activeRule, 'fail')` + TTS "Marked fail." |
+| `next` | "next", "continue", "move on" | Advance cursor + TTS reads next rule |
+| `skip` | "skip", "ignore", "next item" | TTS "Skipped." + advance cursor |
+| `photo` | "photo", "camera", "picture" | TTS stub "Opening camera." (Week 6 wires camera) |
+| `stop` | "stop", "done", "cancel" | Stop listening |
+| `unknown` | anything else | TTS "Didn't catch that." |
+
+**Key files:**
+- `src/utils/intentParser.ts` — pure keyword matcher, multi-word phrases checked before single tokens
+- `src/hooks/useVoice.ts` — permission request, STT lifecycle (`expo-speech-recognition`), TTS readback (`expo-speech`); pauses mic while speaking to prevent feedback
+- `src/components/VoiceBar.tsx` — pulsing ring animation while listening, bouncing dots while speaking
+- `src/screens/ComplianceScreen.tsx` — `activeRuleId` cursor state, `handleIntent` dispatch, `advanceCursor`
+
+**Dependencies:** `expo-speech ~13.0.0`, `expo-speech-recognition ~3.1.2`
 
 ### NFC note
 
-Real NFC (via `expo-nfc-manager`) requires a development build (bare workflow). The stub is intentional for Phase 1 — wire up actual NFC in Phase 3 when testing with real hardware.
+Real NFC (via `expo-nfc-manager`) requires a development build. The stub is intentional for Phase 1 — wire up actual NFC in Phase 3 when testing with real hardware.
 
 ### Makefile targets
 
 | Target | Description |
 |---|---|
-| `make start` | Start Expo dev server |
-| `make ios` | Open in iOS Simulator |
-| `make android` | Open in Android Emulator |
+| `make start` | Start Expo dev server (Metro only — no native build) |
+| `make ios` | `expo run:ios` — build + run development client |
+| `make android` | `expo run:android` — build + run development client |
 | `make typecheck` | Run `tsc --noEmit` |
 
 ---
 
 ## Build phases (from engineering plan)
 
-| Phase | Weeks | Status |
-|---|---|---|
-| Phase 1 — Simulated environment | 1–4 | Weeks 1–4 complete |
-| Phase 2 — Voice + report generation | 5–8 | Not started |
-| Phase 3 — Real BMS integration | 9–14 | Not started |
-| Phase 4 — OEM RAG knowledge base | 12–16 | Not started |
-
-Week 3 deliverable: Go compliance engine mapping ASME A17.1 rules to telemetry thresholds.
+| Phase | Week | Deliverable | Status |
+|---|---|---|---|
+| Phase 1 | 1 | Elevator simulator (BACnet/IP + HTTP fault injection) | Complete |
+| Phase 1 | 2 | Telemetry ingestor (Go → TimescaleDB) | Complete |
+| Phase 1 | 3 | Compliance engine (20 ASME A17.1 rules, Go REST API) | Complete |
+| Phase 1 | 4 | Mobile app skeleton (scan → checklist → summary) | Complete |
+| Phase 2 | 5 | Voice-to-command pipeline (STT + TTS + intent parser) | Complete |
+| Phase 2 | 6 | Photo evidence capture | Not started |
+| Phase 2 | 7 | PDF report generator | Not started |
+| Phase 2 | 8 | End-to-end demo flow | Not started |
+| Phase 3 | 9–14 | Real BMS / BACnet integration | Not started |
+| Phase 4 | 12–16 | OEM RAG knowledge base | Not started |

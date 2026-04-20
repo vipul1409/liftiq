@@ -15,7 +15,7 @@ elevator-simulator  →  telemetry-ingestor  →  TimescaleDB
 | `elevator-simulator` | Python / FastAPI / BAC0 | Simulates 3 elevators over BACnet/IP + HTTP fault-injection API |
 | `telemetry-ingestor` | Go / pgx | Polls simulator every 5 s, bulk-inserts into TimescaleDB |
 | `compliance-engine` | Go / pgx | Evaluates 20 ASME A17.1 rules against latest telemetry; REST API |
-| `liftiq-mobile` | React Native / Expo | Inspector app — scan → compliance checklist → summary |
+| `liftiq-mobile` | React Native / Expo | Inspector app — scan → voice-guided compliance checklist → summary |
 
 ## Quick Start
 
@@ -53,10 +53,11 @@ make run
 cd compliance-engine
 make run
 
-# 4. Mobile app
+# 4. Mobile app (requires a development build for voice — see below)
 cd liftiq-mobile
 npm install
-make start   # scan QR with Expo Go
+npx expo prebuild          # generates native iOS/Android projects
+npx expo run:ios           # or: npx expo run:android
 ```
 
 ## Demo
@@ -95,12 +96,32 @@ liftiq/
 
 See [CLAUDE.md](CLAUDE.md) for the full developer guide and [LiftIQ_Engineering_Plan_BMS_Integration.md](LiftIQ_Engineering_Plan_BMS_Integration.md) for the product and protocol blueprint.
 
+## Mobile App — Voice Commands
+
+The compliance screen supports hands-free inspection via push-to-talk voice commands. Tap the mic button in the floating VoiceBar, then speak:
+
+| Command | Examples | Action |
+|---|---|---|
+| `pass` | "pass", "looks good", "ok" | Mark active rule as pass |
+| `fail` | "fail", "no good", "bad" | Mark active rule as fail |
+| `next` | "next", "continue" | Advance to next rule + read it aloud |
+| `skip` | "skip", "ignore" | Skip active rule + advance |
+| `photo` | "photo", "camera" | *(Week 6 stub — says "Opening camera.")* |
+| `stop` | "stop", "done" | Stop listening |
+
+The active rule is highlighted with a blue left border. TTS reads each rule description and status aloud when advancing. Requires a development build (not Expo Go) — `expo-speech-recognition` uses native iOS/Android speech APIs.
+
+> **Note:** Speech recognition does not work in the iOS Simulator. Test on a physical device or Android Emulator.
+
 ## Build Phases
 
 | Phase | Scope | Status |
 |---|---|---|
 | Phase 1 (Weeks 1–4) | Simulated environment, ingestor, compliance engine, mobile app | Complete |
-| Phase 2 (Weeks 5–8) | Voice interface + report generation | Not started |
+| Phase 2 — Week 5 | Voice-to-command pipeline (STT + TTS + intent parser) | Complete |
+| Phase 2 — Week 6 | Photo evidence capture | Not started |
+| Phase 2 — Week 7 | PDF report generator | Not started |
+| Phase 2 — Week 8 | End-to-end demo flow | Not started |
 | Phase 3 (Weeks 9–14) | Real BMS / BACnet integration | Not started |
 | Phase 4 (Weeks 12–16) | OEM RAG knowledge base | Not started |
 
