@@ -20,8 +20,9 @@ check() {
 
 echo ""
 echo -e "${BLUE}── Service health ───────────────────────────────${NC}"
-check "Elevator simulator" "http://localhost:8000/health"
-check "Compliance engine " "http://localhost:8080/health"
+check "Elevator simulator " "http://localhost:8000/health"
+check "Compliance engine  " "http://localhost:8080/health"
+check "Report generator   " "http://localhost:8082/health"
 
 echo ""
 echo -e "${BLUE}── Elevator units (compliance engine) ───────────${NC}"
@@ -57,5 +58,13 @@ if [[ -f /tmp/liftiq-ingestor.log ]]; then
   tail -5 /tmp/liftiq-ingestor.log
 else
   echo "  (no ingestor log found)"
+fi
+
+echo ""
+echo -e "${BLUE}── Report generator log (last 3 lines) ──────────${NC}"
+if [[ -f /tmp/liftiq-report.log ]]; then
+  tail -3 /tmp/liftiq-report.log
+else
+  echo "  (no report log found)"
 fi
 echo ""

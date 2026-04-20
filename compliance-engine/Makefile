@@ -26,6 +26,8 @@ help:
 	@echo "  STALE_WINDOW_MINUTES    (default 10)"
 	@echo "  LOG_LEVEL               debug|info|warn|error (default info)"
 	@echo ""
+	@echo "See root 'make demo-up' to start the full Phase 2 stack."
+	@echo ""
 
 build:
 	@mkdir -p $(BUILD_DIR)

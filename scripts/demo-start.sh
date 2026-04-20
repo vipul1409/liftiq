@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# demo-start.sh — Bring up the full LiftIQ Phase 1 stack
+# demo-start.sh — Bring up the full LiftIQ Phase 2 stack
 #
 # Services started (in order, with health checks between each):
 #   1. TimescaleDB         (Docker)                    :5432
 #   2. Elevator simulator  (Python/FastAPI)             :8000
 #   3. Telemetry ingestor  (Go)                         → TimescaleDB
 #   4. Compliance engine   (Go/HTTP)                    :8080
+#   5. Report generator    (Go/HTTP + headless Chrome)  :8082
 #
 # Logs written to /tmp/liftiq-*.log
 # PIDs written to /tmp/liftiq-*.pid
@@ -47,7 +48,7 @@ wait_for_port() {
 
 # ── 0. Pre-flight ───────────────────────────────────────────────────────────
 
-if [[ -f "$PID_DIR/liftiq-simulator.pid" ]] || [[ -f "$PID_DIR/liftiq-compliance.pid" ]]; then
+if [[ -f "$PID_DIR/liftiq-simulator.pid" ]] || [[ -f "$PID_DIR/liftiq-compliance.pid" ]] || [[ -f "$PID_DIR/liftiq-report.pid" ]]; then
   warn "Demo may already be running. Run 'make demo-down' first, or check /tmp/liftiq-*.pid"
   exit 1
 fi
@@ -116,21 +117,38 @@ echo $! > "$PID_DIR/liftiq-compliance.pid"
 
 wait_for_port "compliance" 8080
 
+# ── 5. Report Generator ─────────────────────────────────────────────────────
+
+info "Starting report generator..."
+cd "$REPO_ROOT/report-generator"
+make build > /dev/null
+
+nohup env \
+  HTTP_PORT=8082 \
+  LOG_LEVEL=info \
+  ./bin/reportd \
+  > "$LOG_DIR/liftiq-report.log" 2>&1 &
+echo $! > "$PID_DIR/liftiq-report.pid"
+
+wait_for_port "report" 8082
+
 # ── Done ────────────────────────────────────────────────────────────────────
 
 echo ""
 echo -e "${GREEN}╔══════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║        LiftIQ Phase 1 stack is up            ║${NC}"
+echo -e "${GREEN}║        LiftIQ Phase 2 stack is up            ║${NC}"
 echo -e "${GREEN}╚══════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "  Elevator simulator   http://localhost:8000/elevators"
 echo -e "  Compliance engine    http://localhost:8080/units"
+echo -e "  Report generator     http://localhost:8082/health"
 echo -e "  Simulator docs       http://localhost:8000/docs"
 echo ""
 echo -e "  Logs:"
 echo -e "    Simulator   $LOG_DIR/liftiq-simulator.log"
 echo -e "    Ingestor    $LOG_DIR/liftiq-ingestor.log"
 echo -e "    Compliance  $LOG_DIR/liftiq-compliance.log"
+echo -e "    Report      $LOG_DIR/liftiq-report.log"
 echo ""
 echo -e "  ${YELLOW}Wait ~10 seconds for the first telemetry rows to be ingested,${NC}"
 echo -e "  ${YELLOW}then open the mobile app or run: make demo-status${NC}"

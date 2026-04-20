@@ -2,8 +2,9 @@
 
 .PHONY: help demo-up demo-down demo-status \
         fault-door fault-brake fault-motor fault-safety fault-leveling clear-fault \
-        logs-simulator logs-ingestor logs-compliance \
-        mobile \
+        logs-simulator logs-ingestor logs-compliance logs-report \
+        mobile mobile-ios mobile-android \
+        test-all \
         compose-local compose-dev compose-prod compose-down compose-build \
         db-reset db-reset-hard
 
@@ -11,12 +12,15 @@
 
 help:
 	@echo ""
-	@echo "LiftIQ — orchestration"
+	@echo "LiftIQ — Phase 2 orchestration"
 	@echo ""
 	@echo "  Local demo (native processes, fastest iteration)"
-	@echo "  make demo-up          Start all services via scripts"
+	@echo "  make demo-up          Start all 5 services (simulator, ingestor, compliance, report)"
 	@echo "  make demo-down        Stop all services"
 	@echo "  make demo-status      Health check + live compliance summary"
+	@echo ""
+	@echo "  Testing"
+	@echo "  make test-all         Run all tests (Go services + mobile)"
 	@echo ""
 	@echo "  Docker environments"
 	@echo "  make compose-local    Build + start full stack (local, ports exposed)"
@@ -41,9 +45,12 @@ help:
 	@echo "  make logs-simulator   Tail simulator log"
 	@echo "  make logs-ingestor    Tail ingestor log"
 	@echo "  make logs-compliance  Tail compliance engine log"
+	@echo "  make logs-report      Tail report generator log"
 	@echo ""
-	@echo "  Mobile app"
-	@echo "  make mobile           Start Expo dev server for liftiq-mobile"
+	@echo "  Mobile app (requires dev build — not Expo Go)"
+	@echo "  make mobile           Start Expo Metro bundler"
+	@echo "  make mobile-ios       Open directly in iOS Simulator"
+	@echo "  make mobile-android   Open directly in Android Emulator"
 	@echo ""
 
 # ── Demo lifecycle ───────────────────────────────────────────────────────────
@@ -101,6 +108,9 @@ logs-ingestor:
 logs-compliance:
 	tail -f /tmp/liftiq-compliance.log
 
+logs-report:
+	tail -f /tmp/liftiq-report.log
+
 # ── Docker environments ───────────────────────────────────────────────────────
 
 COMPOSE_BASE := docker compose -f deploy/docker-compose.yml
@@ -137,6 +147,31 @@ db-reset-hard:
 	./scripts/db-reset.sh --hard
 
 # ── Mobile ───────────────────────────────────────────────────────────────────
+# Requires a development build (not Expo Go) — run `npx expo run:ios` once first.
 
 mobile:
 	cd liftiq-mobile && npx expo start
+
+mobile-ios:
+	cd liftiq-mobile && npx expo start --ios
+
+mobile-android:
+	cd liftiq-mobile && npx expo start --android
+
+# ── Tests ─────────────────────────────────────────────────────────────────────
+
+test-all:
+	@echo "── telemetry-ingestor ──────────────────────────"
+	cd telemetry-ingestor && go test ./internal/...
+	@echo ""
+	@echo "── compliance-engine ───────────────────────────"
+	cd compliance-engine && go test ./internal/...
+	@echo ""
+	@echo "── report-generator ────────────────────────────"
+	cd report-generator && go test ./internal/...
+	@echo ""
+	@echo "── liftiq-mobile ───────────────────────────────"
+	cd liftiq-mobile && npm test
+	@echo ""
+	@echo "── elevator-simulator ──────────────────────────"
+	cd elevator-simulator && source .venv/bin/activate && python -m pytest tests/ -q

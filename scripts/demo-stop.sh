@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# demo-stop.sh — Tear down the full LiftIQ Phase 1 stack
+# demo-stop.sh — Tear down the full LiftIQ Phase 2 stack
 
 set -euo pipefail
 
@@ -31,6 +31,7 @@ stop_pid() {
   fi
 }
 
+stop_pid report
 stop_pid compliance
 stop_pid ingestor
 stop_pid simulator
