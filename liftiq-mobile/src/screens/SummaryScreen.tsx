@@ -26,10 +26,9 @@ const BANNER_LABELS: Record<RuleStatus, string> = {
 };
 
 export function SummaryScreen({ route, navigation }: Props) {
-  const { unitTag, summary, asOf } = route.params;
+  const { unitTag, summary, asOf, results, photos, technician } = route.params;
   const bannerColor = BANNER_COLORS[summary.overall];
   const bannerLabel = BANNER_LABELS[summary.overall];
-
   const formattedDate = new Date(asOf).toLocaleString();
 
   return (
@@ -59,7 +58,29 @@ export function SummaryScreen({ route, navigation }: Props) {
         <Text style={styles.meta}>
           {summary.pass + summary.fail + summary.unknown} ASME A17.1 checks evaluated
         </Text>
+
+        {photos.length > 0 && (
+          <Text style={styles.photoCount}>
+            {photos.length} photo{photos.length !== 1 ? 's' : ''} attached
+          </Text>
+        )}
       </ScrollView>
+
+      <TouchableOpacity
+        style={styles.proceedButton}
+        onPress={() =>
+          navigation.navigate('Signature', {
+            unitTag,
+            summary,
+            asOf,
+            results,
+            photos,
+            technician,
+          })
+        }
+      >
+        <Text style={styles.proceedButtonText}>Proceed to Sign</Text>
+      </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.backButton}
@@ -139,9 +160,30 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#9ca3af',
     textAlign: 'center',
+    marginBottom: 8,
+  },
+  photoCount: {
+    fontSize: 13,
+    color: '#6b7280',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  proceedButton: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: '#2563eb',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  proceedButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
   },
   backButton: {
-    margin: 16,
+    marginHorizontal: 16,
+    marginBottom: 16,
     backgroundColor: '#1e40af',
     borderRadius: 12,
     paddingVertical: 16,

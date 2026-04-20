@@ -3,12 +3,29 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ScanScreen } from '../screens/ScanScreen';
 import { ComplianceScreen } from '../screens/ComplianceScreen';
 import { SummaryScreen } from '../screens/SummaryScreen';
-import type { ComplianceSummary } from '../types/compliance';
+import { SignatureScreen } from '../screens/SignatureScreen';
+import type { ComplianceSummary, RuleResult } from '../types/compliance';
+import type { CapturedPhoto } from '../store/photos';
 
 export type RootStackParamList = {
   Scan: undefined;
   Compliance: { unitTag: string };
-  Summary: { unitTag: string; summary: ComplianceSummary; asOf: string };
+  Summary: {
+    unitTag: string;
+    summary: ComplianceSummary;
+    asOf: string;
+    results: RuleResult[];
+    photos: CapturedPhoto[];
+    technician: string;
+  };
+  Signature: {
+    unitTag: string;
+    summary: ComplianceSummary;
+    asOf: string;
+    results: RuleResult[];
+    photos: CapturedPhoto[];
+    technician: string;
+  };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -38,6 +55,11 @@ export function AppNavigator() {
         name="Summary"
         component={SummaryScreen}
         options={{ title: 'Inspection Summary' }}
+      />
+      <Stack.Screen
+        name="Signature"
+        component={SignatureScreen}
+        options={{ title: 'Certify Inspection' }}
       />
     </Stack.Navigator>
   );

@@ -8,6 +8,7 @@
  */
 
 import { renderHook, act, waitFor } from '@testing-library/react-native';
+import type { CapturedPhoto } from '../store/photos';
 
 // ---------------------------------------------------------------------------
 // Mock handles
@@ -113,24 +114,24 @@ describe('useCamera – capture with GPS', () => {
     const { result } = renderHook(() => useCamera());
     await waitFor(() => expect(result.current.hasPermission).toBe(true));
 
-    let photo: Awaited<ReturnType<typeof result.current.capture>> = null;
+    let photo: CapturedPhoto | null = null;
     await act(async () => {
       photo = await result.current.capture('ASME-006');
     });
 
-    expect(photo?.uri).toBe('file:///photo1.jpg');
+    expect((photo as CapturedPhoto | null)?.uri).toBe('file:///photo1.jpg');
   });
 
   it('returns a CapturedPhoto with the provided ruleId', async () => {
     const { result } = renderHook(() => useCamera());
     await waitFor(() => expect(result.current.hasPermission).toBe(true));
 
-    let photo: Awaited<ReturnType<typeof result.current.capture>> = null;
+    let photo: CapturedPhoto | null = null;
     await act(async () => {
       photo = await result.current.capture('ASME-011');
     });
 
-    expect(photo?.ruleId).toBe('ASME-011');
+    expect((photo as CapturedPhoto | null)?.ruleId).toBe('ASME-011');
   });
 
   it('returns GPS coordinates from expo-location', async () => {
@@ -138,25 +139,25 @@ describe('useCamera – capture with GPS', () => {
     const { result } = renderHook(() => useCamera());
     await waitFor(() => expect(result.current.hasPermission).toBe(true));
 
-    let photo: Awaited<ReturnType<typeof result.current.capture>> = null;
+    let photo: CapturedPhoto | null = null;
     await act(async () => {
       photo = await result.current.capture('ASME-001');
     });
 
-    expect(photo?.latitude).toBeCloseTo(40.7128);
-    expect(photo?.longitude).toBeCloseTo(-74.006);
+    expect((photo as CapturedPhoto | null)?.latitude).toBeCloseTo(40.7128);
+    expect((photo as CapturedPhoto | null)?.longitude).toBeCloseTo(-74.006);
   });
 
   it('returns a valid ISO timestamp', async () => {
     const { result } = renderHook(() => useCamera());
     await waitFor(() => expect(result.current.hasPermission).toBe(true));
 
-    let photo: Awaited<ReturnType<typeof result.current.capture>> = null;
+    let photo: CapturedPhoto | null = null;
     await act(async () => {
       photo = await result.current.capture('ASME-001');
     });
 
-    expect(photo?.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+    expect((photo as CapturedPhoto | null)?.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
   });
 
   it('passes quality 0.7 and mediaTypes to launchCameraAsync', async () => {
@@ -182,13 +183,13 @@ describe('useCamera – capture without GPS', () => {
     const { result } = renderHook(() => useCamera());
     await waitFor(() => expect(result.current.hasPermission).toBe(true));
 
-    let photo: Awaited<ReturnType<typeof result.current.capture>> = null;
+    let photo: CapturedPhoto | null = null;
     await act(async () => {
       photo = await result.current.capture('ASME-001');
     });
 
-    expect(photo?.latitude).toBeNull();
-    expect(photo?.longitude).toBeNull();
+    expect((photo as CapturedPhoto | null)?.latitude).toBeNull();
+    expect((photo as CapturedPhoto | null)?.longitude).toBeNull();
   });
 
   it('still returns the photo uri when location is unavailable', async () => {
@@ -197,12 +198,12 @@ describe('useCamera – capture without GPS', () => {
     const { result } = renderHook(() => useCamera());
     await waitFor(() => expect(result.current.hasPermission).toBe(true));
 
-    let photo: Awaited<ReturnType<typeof result.current.capture>> = null;
+    let photo: CapturedPhoto | null = null;
     await act(async () => {
       photo = await result.current.capture('ASME-001');
     });
 
-    expect(photo?.uri).toBe('file:///noloc.jpg');
+    expect((photo as CapturedPhoto | null)?.uri).toBe('file:///noloc.jpg');
   });
 });
 
@@ -215,7 +216,7 @@ describe('useCamera – cancelled capture', () => {
     const { result } = renderHook(() => useCamera());
     await waitFor(() => expect(result.current.hasPermission).toBe(true));
 
-    let photo: Awaited<ReturnType<typeof result.current.capture>> = null;
+    let photo: CapturedPhoto | null = null;
     await act(async () => {
       photo = await result.current.capture('ASME-006');
     });

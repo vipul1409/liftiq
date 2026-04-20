@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -17,6 +18,50 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Scan'>;
 export function ScanScreen({ navigation }: Props) {
   const { units, loading, error } = useUnits();
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [scanning, setScanning] = useState(false);
+
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const pulseLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  // Pulsing ring animation when idle and ready
+  useEffect(() => {
+    if (scanning || loading || error) {
+      pulseLoopRef.current?.stop();
+      Animated.timing(pulseAnim, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }).start();
+      return;
+    }
+
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.12,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1.0,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    pulseLoopRef.current = loop;
+    loop.start();
+    return () => loop.stop();
+  }, [scanning, loading, error]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleScanTap() {
+    if (scanning) return;
+    setScanning(true);
+    setTimeout(() => {
+      setScanning(false);
+      setPickerVisible(true);
+    }, 1000);
+  }
 
   function handleSelect(tag: string) {
     setPickerVisible(false);
@@ -39,19 +84,30 @@ export function ScanScreen({ navigation }: Props) {
               <Text style={styles.errorHint}>Is the compliance engine running on port 8080?</Text>
             </View>
           ) : (
-            <TouchableOpacity
-              style={styles.scanButton}
-              onPress={() => setPickerVisible(true)}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.scanIcon}>⬡</Text>
-              <Text style={styles.scanLabel}>Scan Elevator Tag</Text>
-              <Text style={styles.scanHint}>NFC stub — tap to select unit</Text>
-            </TouchableOpacity>
+            <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+              <TouchableOpacity
+                style={styles.scanButton}
+                onPress={handleScanTap}
+                activeOpacity={0.8}
+                disabled={scanning}
+              >
+                {scanning ? (
+                  <ActivityIndicator size="large" color="#93c5fd" style={styles.scanIcon} />
+                ) : (
+                  <Text style={styles.scanIcon}>⬡</Text>
+                )}
+                <Text style={styles.scanLabel}>
+                  {scanning ? 'Scanning…' : 'Scan Elevator Tag'}
+                </Text>
+                <Text style={styles.scanHint}>
+                  {scanning ? 'Reading NFC tag' : 'Tap to select unit'}
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
           )}
         </View>
 
-        <Text style={styles.footer}>Phase 1 · Week 4 prototype</Text>
+        <Text style={styles.footer}>Phase 2 · Week 8 prototype</Text>
       </View>
 
       <UnitPicker

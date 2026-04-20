@@ -56,7 +56,7 @@ export function ComplianceScreen({ route, navigation }: Props) {
   const { unitTag } = route.params;
   const { data, loading, error, refetch } = useCompliance(unitTag);
   const { overrides, setOverride, clearOverride } = useOverrides();
-  const { addPhoto, removePhoto, getPhotos } = usePhotos();
+  const { photos, addPhoto, removePhoto, getPhotos } = usePhotos();
   const camera = useCamera();
 
   const sections = useMemo(
@@ -233,13 +233,17 @@ export function ComplianceScreen({ route, navigation }: Props) {
         </View>
         <TouchableOpacity
           style={styles.summaryBtn}
-          onPress={() =>
+          onPress={() => {
+            const allPhotos = Array.from(photos.values()).flat();
             navigation.navigate('Summary', {
               unitTag,
               summary: data.summary,
               asOf: data.as_of,
-            })
-          }
+              results: data.results,
+              photos: allPhotos,
+              technician: 'Inspector',
+            });
+          }}
         >
           <StatusBadge status={data.summary.overall} />
           <Text style={styles.summaryBtnText}>View Summary</Text>
