@@ -53,7 +53,7 @@ var migrationStmts = []string{
 			SELECT 1 FROM timescaledb_information.dimensions
 			WHERE hypertable_name = 'telemetry' AND column_name = 'unit_id'
 		) THEN
-			PERFORM add_dimension('telemetry', 'unit_id', number_of_partitions => 4);
+			PERFORM add_dimension('telemetry', 'unit_id', number_partitions => 4);
 		END IF;
 	END $$`,
 

@@ -10,6 +10,12 @@ Read it before making changes.
 ```
 liftiq/
 ├── CLAUDE.md                              ← you are here
+├── DEMO.md                                ← end-to-end demo runbook (investor + ISP scripts)
+├── Makefile                               ← root orchestration (demo-up/down/status, fault injection)
+├── scripts/
+│   ├── demo-start.sh                      ← start all services with health checks
+│   ├── demo-stop.sh                       ← stop all services
+│   └── demo-status.sh                     ← health check + live compliance summary
 ├── LiftIQ_Engineering_Plan_BMS_Integration.md   ← engineering blueprint
 ├── elevator-simulator/                    ← Phase 1 Week 1 deliverable
 │   ├── elevator_state.py                  ← ElevatorState dataclass + simulation
@@ -20,7 +26,7 @@ liftiq/
 │   ├── setup.sh                           ← venv creation script
 │   ├── Makefile                           ← developer shortcuts
 │   └── tests/                             ← pytest test suite (102 tests)
-└── telemetry-ingestor/                    ← Phase 1 Week 2 deliverable
+├── telemetry-ingestor/                    ← Phase 1 Week 2 deliverable
     ├── cmd/ingestd/main.go                ← binary entry point
     ├── internal/
     │   ├── config/config.go               ← env-var config
@@ -37,6 +43,44 @@ liftiq/
     ├── docker-compose.yml                 ← TimescaleDB for local dev
     ├── go.mod / go.sum
     └── Makefile
+├── compliance-engine/                     ← Phase 1 Week 3 deliverable
+│   ├── cmd/complianced/main.go            ← binary entry point (port 8080)
+│   ├── internal/
+│   │   ├── api/handler.go                 ← HTTP routes + response types
+│   │   ├── config/config.go               ← env-var config
+│   │   ├── rules/
+│   │   │   ├── rule.go                    ← Rule + Result types
+│   │   │   ├── registry.go                ← 20 ASME A17.1 rule definitions
+│   │   │   └── evaluator.go               ← EvaluateAll function
+│   │   └── store/
+│   │       ├── store.go                   ← Store interface + MetricReading type
+│   │       └── pgx.go                     ← pgxpool impl (DISTINCT ON latest-per-metric)
+│   ├── go.mod / go.sum
+│   └── Makefile
+└── liftiq-mobile/                         ← Phase 1 Week 4 deliverable
+    ├── App.tsx                            ← entry point (NavigationContainer)
+    ├── app.json                           ← Expo config
+    ├── .env                               ← EXPO_PUBLIC_COMPLIANCE_API_URL
+    ├── Makefile                           ← developer shortcuts
+    ├── src/
+    │   ├── api/
+    │   │   ├── client.ts                  ← base fetch wrapper (ApiError, timeout)
+    │   │   └── compliance.ts              ← getUnits, getCompliance wrappers
+    │   ├── types/compliance.ts            ← TypeScript interfaces (mirrors Go API shapes)
+    │   ├── screens/
+    │   │   ├── ScanScreen.tsx             ← NFC stub + unit picker
+    │   │   ├── ComplianceScreen.tsx       ← 20-rule checklist with overrides
+    │   │   └── SummaryScreen.tsx          ← pass/fail banner + counts
+    │   ├── components/
+    │   │   ├── RuleRow.tsx                ← single rule card + override buttons
+    │   │   ├── StatusBadge.tsx            ← pass/fail/unknown colored pill
+    │   │   └── UnitPicker.tsx             ← modal bottom sheet for unit selection
+    │   ├── hooks/
+    │   │   ├── useCompliance.ts           ← fetch compliance report + refetch
+    │   │   └── useUnits.ts                ← fetch unit list
+    │   ├── store/overrides.ts             ← in-memory manual pass/fail overrides
+    │   └── navigation/AppNavigator.tsx    ← native-stack: Scan → Compliance → Summary
+    └── package.json
 ```
 
 The overall product plan and protocol details live in
@@ -446,11 +490,69 @@ ORDER BY 1, 2;
 
 ---
 
+## liftiq-mobile
+
+### Requirements
+
+| Requirement | Version |
+|---|---|
+| Node.js | 18+ |
+| Expo CLI | via `npx expo` (no global install needed) |
+
+### First-time setup
+
+```bash
+cd liftiq-mobile
+npm install
+```
+
+### Running
+
+```bash
+# Start Metro bundler (opens QR code for Expo Go)
+make start          # or: npx expo start
+
+# Open directly in simulator
+make ios            # iOS Simulator (localhost works)
+make android        # Android Emulator (use http://10.0.2.2:8080 in .env)
+```
+
+### Environment
+
+Edit `.env` to point at the compliance engine:
+
+```
+EXPO_PUBLIC_COMPLIANCE_API_URL=http://localhost:8080       # iOS Simulator / web
+EXPO_PUBLIC_COMPLIANCE_API_URL=http://10.0.2.2:8080        # Android Emulator
+EXPO_PUBLIC_COMPLIANCE_API_URL=http://192.168.x.x:8080     # physical device
+```
+
+### App flow
+
+1. **Scan screen** — tap "Scan Elevator Tag" (NFC stub) → picker shows all units from `GET /units`
+2. **Compliance screen** — displays all 20 ASME A17.1 rule results grouped by subsystem; each rule has override pass/fail buttons for manual inspection items
+3. **Summary screen** — overall pass/fail banner, per-category counts
+
+### NFC note
+
+Real NFC (via `expo-nfc-manager`) requires a development build (bare workflow). The stub is intentional for Phase 1 — wire up actual NFC in Phase 3 when testing with real hardware.
+
+### Makefile targets
+
+| Target | Description |
+|---|---|
+| `make start` | Start Expo dev server |
+| `make ios` | Open in iOS Simulator |
+| `make android` | Open in Android Emulator |
+| `make typecheck` | Run `tsc --noEmit` |
+
+---
+
 ## Build phases (from engineering plan)
 
 | Phase | Weeks | Status |
 |---|---|---|
-| Phase 1 — Simulated environment | 1–4 | Weeks 1–2 complete |
+| Phase 1 — Simulated environment | 1–4 | Weeks 1–4 complete |
 | Phase 2 — Voice + report generation | 5–8 | Not started |
 | Phase 3 — Real BMS integration | 9–14 | Not started |
 | Phase 4 — OEM RAG knowledge base | 12–16 | Not started |
