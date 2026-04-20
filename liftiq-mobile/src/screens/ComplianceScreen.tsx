@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   SafeAreaView,
@@ -11,10 +11,14 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RuleRow } from '../components/RuleRow';
 import { StatusBadge } from '../components/StatusBadge';
+import { VoiceBar } from '../components/VoiceBar';
 import { useCompliance } from '../hooks/useCompliance';
 import { useOverrides } from '../store/overrides';
+import { useVoice } from '../hooks/useVoice';
+import { effectiveStatus } from '../store/overrides';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import type { RuleResult } from '../types/compliance';
+import type { VoiceIntent } from '../types/voice';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Compliance'>;
 
@@ -56,6 +60,81 @@ export function ComplianceScreen({ route, navigation }: Props) {
     [data],
   );
 
+  // Flat ordered rule list for cursor navigation.
+  const flatRules = useMemo(() => sections.flatMap((s) => s.data), [sections]);
+
+  // Active rule cursor (voice navigation target).
+  const [activeRuleId, setActiveRuleId] = useState<string | null>(null);
+
+  // Seed cursor to first rule once data loads.
+  useEffect(() => {
+    if (flatRules.length > 0 && activeRuleId === null) {
+      setActiveRuleId(flatRules[0].rule_id);
+    }
+  }, [flatRules]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Text for TTS readback. Only updated when voice navigation fires.
+  const [readText, setReadText] = useState('');
+  const advancedByVoice = useRef(false);
+
+  const advanceCursor = useCallback(() => {
+    setActiveRuleId((current) => {
+      const idx = flatRules.findIndex((r) => r.rule_id === current);
+      const next = flatRules[idx + 1];
+      return next ? next.rule_id : current;
+    });
+    advancedByVoice.current = true;
+  }, [flatRules]);
+
+  // Speak the active rule whenever voice navigation moves the cursor.
+  useEffect(() => {
+    if (!advancedByVoice.current || !activeRuleId) return;
+    advancedByVoice.current = false;
+    const rule = flatRules.find((r) => r.rule_id === activeRuleId);
+    if (!rule) return;
+    const status = effectiveStatus(rule.status, overrides.get(rule.rule_id));
+    setReadText(`${rule.rule_id}: ${rule.description}. Status: ${status}.`);
+  }, [activeRuleId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleIntent = useCallback(
+    (intent: VoiceIntent) => {
+      if (!activeRuleId) return;
+      switch (intent) {
+        case 'pass':
+          setOverride(activeRuleId, 'pass');
+          setReadText('Marked pass.');
+          break;
+        case 'fail':
+          setOverride(activeRuleId, 'fail');
+          setReadText('Marked fail.');
+          break;
+        case 'skip':
+          setReadText('Skipped.');
+          advanceCursor();
+          break;
+        case 'next':
+          advanceCursor();
+          break;
+        case 'photo':
+          setReadText('Opening camera.');
+          break;
+        case 'stop':
+          setReadText('Voice stopped.');
+          break;
+        case 'unknown':
+          setReadText("Didn't catch that.");
+          break;
+      }
+    },
+    [activeRuleId, setOverride, advanceCursor],
+  );
+
+  const voice = useVoice({
+    onIntent: handleIntent,
+    readText,
+    enabled: !loading && !!data,
+  });
+
   if (loading) {
     return (
       <SafeAreaView style={styles.centered}>
@@ -90,6 +169,7 @@ export function ComplianceScreen({ route, navigation }: Props) {
             override={overrides.get(item.rule_id)}
             onOverride={setOverride}
             onClearOverride={clearOverride}
+            isActive={item.rule_id === activeRuleId}
           />
         )}
         renderSectionHeader={({ section }) => (
@@ -111,8 +191,18 @@ export function ComplianceScreen({ route, navigation }: Props) {
             </Text>
           </View>
         }
-        ListFooterComponent={<View style={{ height: 100 }} />}
+        ListFooterComponent={<View style={{ height: 160 }} />}
         stickySectionHeadersEnabled
+      />
+
+      <VoiceBar
+        listening={voice.listening}
+        isSpeaking={voice.isSpeaking}
+        transcript={voice.transcript}
+        lastIntent={voice.lastIntent}
+        hasPermission={voice.hasPermission}
+        onStartListening={voice.startListening}
+        onStopListening={voice.stopListening}
       />
 
       {/* Sticky footer with summary + view button */}

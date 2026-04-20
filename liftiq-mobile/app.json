@@ -25,6 +25,15 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow LiftIQ to use the microphone for voice inspection commands.",
+          "speechRecognitionPermission": "Allow LiftIQ to recognize your voice for hands-free inspection."
+        }
+      ]
+    ]
   }
 }

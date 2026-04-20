@@ -9,13 +9,14 @@ interface Props {
   override: 'pass' | 'fail' | undefined;
   onOverride: (ruleId: string, status: 'pass' | 'fail') => void;
   onClearOverride: (ruleId: string) => void;
+  isActive?: boolean;
 }
 
-export function RuleRow({ result, override, onOverride, onClearOverride }: Props) {
+export function RuleRow({ result, override, onOverride, onClearOverride, isActive = false }: Props) {
   const effective = effectiveStatus(result.status, override);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isActive && styles.containerActive]}>
       <View style={styles.topRow}>
         <Text style={styles.ruleId}>{result.rule_id}</Text>
         <StatusBadge status={effective} overridden={override !== undefined} />
@@ -60,6 +61,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     backgroundColor: '#fff',
+  },
+  containerActive: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#2563eb',
+    backgroundColor: '#eff6ff',
+    paddingLeft: 13, // compensate for the 3px border
   },
   topRow: {
     flexDirection: 'row',
