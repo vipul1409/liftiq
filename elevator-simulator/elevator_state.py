@@ -35,18 +35,18 @@ class ElevatorState:
     motor_current_drift: float = 0.0       # accumulates over time (simulates wear)
     motor_temp_baseline: float = 45.0      # celsius
     motor_rpm: float = 0.0
-    motor_run_hours: float = 12450.0
-    trip_count: int = 847231
+    motor_run_hours: float = 5200.0
+    trip_count: int = 125_000
 
     # Door telemetry
-    door_cycle_count: int = 1_204_500
+    door_cycle_count: int = 480_000
     door_motor_amps: float = 2.1
     door_close_force_n: float = 67.0       # ASME limit is 135N
     door_close_time_ms: int = 3200
-    door_obstruction_events: int = 12
+    door_obstruction_events: int = 2
 
     # Brake telemetry
-    brake_engagement_count: int = 847231
+    brake_engagement_count: int = 125_000
     brake_current: float = 1.8
     brake_response_ms: int = 45
 
@@ -229,46 +229,60 @@ class ElevatorState:
 
 
 def make_elevator_fleet() -> list[ElevatorState]:
-    """Create 3 elevators with distinct wear profiles as specified in the Phase 1 plan."""
+    """Create 3 elevators with distinct wear profiles as specified in the Phase 1 plan.
+
+    All three start GREEN (all 20 checks pass).  Counter/service thresholds:
+      motor_run_hours < 20,000    trip_count < 500,000
+      door_cycle_count < 2,000,000    brake_engagement_count < 500,000
+      door_obstruction_events ≤ 10    brake_response_ms ≤ 80
+    ELV-003 is tuned *just below* the limits so fault injection quickly trips them.
+    """
     return [
         ElevatorState(
             unit_id="ELV-001",
+            # New unit — comfortable margin on everything
             motor_current_baseline=12.5,
             motor_current_drift=0.0,
             motor_temp_baseline=45.0,
-            motor_run_hours=12450.0,
-            trip_count=847_231,
-            door_cycle_count=1_204_500,
+            motor_run_hours=5_200.0,
+            trip_count=125_000,
+            door_cycle_count=480_000,
             door_close_force_n=67.0,
+            door_obstruction_events=2,
+            brake_engagement_count=125_000,
             brake_response_ms=45,
             floor=1,
             max_floors=10,
         ),
         ElevatorState(
             unit_id="ELV-002",
-            # Moderately worn unit — slightly elevated baselines
+            # Moderately worn unit — elevated baselines but still passing
             motor_current_baseline=13.8,
             motor_current_drift=0.12,
             motor_temp_baseline=48.5,
-            motor_run_hours=24_120.0,
-            trip_count=1_632_000,
-            door_cycle_count=2_310_000,
-            door_close_force_n=98.0,   # higher wear
+            motor_run_hours=14_800.0,
+            trip_count=320_000,
+            door_cycle_count=1_450_000,
+            door_close_force_n=98.0,
+            door_obstruction_events=6,
+            brake_engagement_count=340_000,
             brake_response_ms=58,
             floor=5,
             max_floors=10,
         ),
         ElevatorState(
             unit_id="ELV-003",
-            # High-mileage unit near end-of-life thresholds
+            # High-mileage unit — just below thresholds; fault injection pushes over
             motor_current_baseline=15.1,
-            motor_current_drift=0.35,
+            motor_current_drift=0.28,       # kept below 0.35 so brake stays ≤80
             motor_temp_baseline=52.0,
-            motor_run_hours=38_900.0,
-            trip_count=2_891_000,
-            door_cycle_count=3_780_000,
-            door_close_force_n=118.0,  # approaching 135N limit
-            brake_response_ms=71,      # approaching 80ms limit
+            motor_run_hours=19_200.0,       # approaching 20,000h limit
+            trip_count=480_000,             # approaching 500,000 limit
+            door_cycle_count=1_920_000,     # approaching 2,000,000 limit
+            door_close_force_n=118.0,       # approaching 135N limit
+            door_obstruction_events=8,      # approaching 10 limit
+            brake_engagement_count=475_000, # approaching 500,000 limit
+            brake_response_ms=71,           # approaching 80ms limit
             floor=8,
             max_floors=10,
         ),

@@ -48,6 +48,7 @@ stop_pid() {
   fi
 }
 
+stop_pid web
 stop_pid report
 stop_pid compliance
 stop_pid ingestor

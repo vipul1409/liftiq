@@ -2,7 +2,8 @@
 
 .PHONY: help demo-up demo-down demo-down-reset demo-down-reset-hard demo-down-reset-volume demo-status \
         fault-door fault-brake fault-motor fault-safety fault-leveling clear-fault \
-        logs-simulator logs-ingestor logs-compliance logs-report \
+        logs-simulator logs-ingestor logs-compliance logs-report logs-web \
+        web web-build \
         mobile mobile-ios mobile-android \
         test-all \
         compose-local compose-dev compose-prod compose-down compose-build \
@@ -15,7 +16,7 @@ help:
 	@echo "LiftIQ — Phase 2 orchestration"
 	@echo ""
 	@echo "  Local demo (native processes, fastest iteration)"
-	@echo "  make demo-up               Start all 5 services (simulator, ingestor, compliance, report)"
+	@echo "  make demo-up               Start all 6 services (simulator, ingestor, compliance, report, web)"
 	@echo "  make demo-down             Stop all services (prompts to delete data)"
 	@echo "  make demo-down-reset       Stop all services + truncate data (keep schema)"
 	@echo "  make demo-down-reset-hard  Stop all services + drop all tables"
@@ -49,6 +50,11 @@ help:
 	@echo "  make logs-ingestor    Tail ingestor log"
 	@echo "  make logs-compliance  Tail compliance engine log"
 	@echo "  make logs-report      Tail report generator log"
+	@echo "  make logs-web         Tail web app log"
+	@echo ""
+	@echo "  Web app (laptop demo — no mobile setup required)"
+	@echo "  make web              Start web app dev server (http://localhost:5173)"
+	@echo "  make web-build        Build web app for production"
 	@echo ""
 	@echo "  Mobile app (requires dev build — not Expo Go)"
 	@echo "  make mobile           Start Expo Metro bundler"
@@ -123,6 +129,9 @@ logs-compliance:
 logs-report:
 	tail -f /tmp/liftiq-report.log
 
+logs-web:
+	tail -f /tmp/liftiq-web.log
+
 # ── Docker environments ───────────────────────────────────────────────────────
 
 COMPOSE_BASE := docker compose -f deploy/docker-compose.yml
@@ -157,6 +166,14 @@ db-reset:
 
 db-reset-hard:
 	./scripts/db-reset.sh --hard
+
+# ── Web app ──────────────────────────────────────────────────────────────────
+
+web:
+	cd liftiq-web && npm run dev
+
+web-build:
+	cd liftiq-web && npm run build
 
 # ── Mobile ───────────────────────────────────────────────────────────────────
 # Requires a development build (not Expo Go) — run `npx expo run:ios` once first.

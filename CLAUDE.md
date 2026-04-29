@@ -10,7 +10,9 @@ Read it before making changes.
 ```
 liftiq/
 ├── CLAUDE.md                              ← you are here
-├── DEMO.md                                ← end-to-end demo runbook (investor + ISP scripts)
+├── DEMO.md                                ← demo index (links to web + mobile runbooks)
+├── DEMO-WEB.md                            ← web demo runbook (laptop-only, browser-based)
+├── DEMO-MOBILE.md                         ← mobile demo runbook (React Native / Expo)
 ├── Makefile                               ← root orchestration (demo-up/down/status, fault injection)
 ├── scripts/
 │   ├── demo-start.sh                      ← start all services with health checks
@@ -27,6 +29,18 @@ liftiq/
 │       ├── .env.dev                       ← dev defaults
 │       └── .env.prod.example              ← prod template (copy → .env.prod)
 ├── LiftIQ_Engineering_Plan_BMS_Integration.md   ← engineering blueprint
+├── liftiq-web/                            ← Web demo app (laptop-friendly e2e demo)
+│   ├── index.html                         ← Vite entry point
+│   ├── vite.config.ts                     ← dev proxy → compliance :8080 + reports :8082
+│   ├── Makefile                           ← dev, build, preview targets
+│   └── src/
+│       ├── main.tsx                       ← ReactDOM + BrowserRouter + InspectionProvider
+│       ├── App.tsx                        ← routes: / → Scan, /inspect/:tag, /summary, /sign
+│       ├── api/                           ← fetch wrappers (compliance, report)
+│       ├── context/InspectionContext.tsx   ← cross-screen session state
+│       ├── hooks/                         ← useUnits, useCompliance, useOverrides, usePhotos, useVoice
+│       ├── components/                    ← StatusBadge, RuleRow, PhotoStrip, VoiceBar, SignatureCanvas
+│       └── screens/                       ← ScanScreen, ComplianceScreen, SummaryScreen, SignatureScreen
 ├── elevator-simulator/                    ← Phase 1 Week 1 deliverable
 │   ├── elevator_state.py                  ← ElevatorState dataclass + simulation
 │   ├── bacnet_server.py                   ← BACnet/IP server (BAC0 wrapper)
@@ -278,7 +292,7 @@ Full BACnet object map is in `elevator_state.py → to_bacnet_points()`.
 |---|---|---|
 | ELV-001 | New | Motor drift 0.0, door force 67 N, brake 45 ms |
 | ELV-002 | Mid-life | Motor drift 0.12, door force 98 N, brake 58 ms |
-| ELV-003 | High-mileage | Motor drift 0.35, door force 118 N, brake 71 ms |
+| ELV-003 | High-mileage | Motor drift 0.28, door force 118 N, brake 71 ms |
 
 ELV-003 is the best elevator to fault-inject for demos — its baselines are already
 close to ASME thresholds, so injected faults become visible quickly.
@@ -649,6 +663,72 @@ Real NFC (via `expo-nfc-manager`) requires a development build. The stub is inte
 
 ---
 
+## liftiq-web
+
+### Requirements
+
+| Requirement | Version |
+|---|---|
+| Node.js | 18+ |
+
+### First-time setup
+
+```bash
+cd liftiq-web
+npm install
+```
+
+### Running
+
+```bash
+make web        # start dev server at http://localhost:5173
+# or
+make web-build  # production build → dist/
+```
+
+The dev server proxies API requests to the backend services:
+- `/api/compliance/*` → `http://localhost:8080` (compliance engine)
+- `/api/reports/*` → `http://localhost:8082` (report generator)
+
+### App flow
+
+1. **Scan screen** (`/`) — tap "Scan Elevator" → select unit from picker
+2. **Compliance screen** (`/inspect/:tag`) — 20 ASME A17.1 rules grouped by subsystem; override buttons, photo upload, voice commands (Web Speech API)
+3. **Summary screen** (`/summary`) — pass/fail banner, per-category counts
+4. **Signature screen** (`/sign`) — HTML5 Canvas signature → SVG data URI, "Sign & Generate PDF" → blob download
+
+### Voice commands (Chrome/Edge/Safari)
+
+Uses the Web Speech API. Same intent patterns as the mobile app:
+- **pass/fail** — override active rule
+- **next/skip** — advance cursor
+- **photo** — open file picker
+- **stop** — stop listening
+
+Falls back gracefully on browsers without `SpeechRecognition` (e.g. Firefox).
+
+### Key differences from mobile app
+
+| Feature | Mobile (`liftiq-mobile`) | Web (`liftiq-web`) |
+|---|---|---|
+| Framework | React Native / Expo | React + Vite |
+| Voice | expo-speech-recognition | Web Speech API |
+| Photo capture | expo-image-picker + GPS | File input + Geolocation API |
+| Signature | PanResponder + dots | HTML5 Canvas |
+| PDF delivery | expo-file-system + Sharing | Blob URL download |
+| State passing | React Navigation route params | InspectionContext |
+
+### Makefile targets
+
+| Target | Description |
+|---|---|
+| `make dev` | Start Vite dev server with HMR |
+| `make build` | TypeScript check + production build |
+| `make preview` | Serve production build locally |
+| `make typecheck` | Run `tsc --noEmit` |
+
+---
+
 ## Build phases (from engineering plan)
 
 | Phase | Week | Deliverable | Status |
@@ -658,8 +738,9 @@ Real NFC (via `expo-nfc-manager`) requires a development build. The stub is inte
 | Phase 1 | 3 | Compliance engine (20 ASME A17.1 rules, Go REST API) | Complete |
 | Phase 1 | 4 | Mobile app skeleton (scan → checklist → summary) | Complete |
 | Phase 2 | 5 | Voice-to-command pipeline (STT + TTS + intent parser) | Complete |
-| Phase 2 | 6 | Photo evidence capture | Not started |
-| Phase 2 | 7 | PDF report generator | Not started |
-| Phase 2 | 8 | End-to-end demo flow | Not started |
+| Phase 2 | 6 | Photo evidence capture | Complete |
+| Phase 2 | 7 | PDF report generator | Complete |
+| Phase 2 | 8 | End-to-end demo flow | Complete |
+| — | — | Web demo app (laptop-friendly e2e) | Complete |
 | Phase 3 | 9–14 | Real BMS / BACnet integration | Not started |
 | Phase 4 | 12–16 | OEM RAG knowledge base | Not started |

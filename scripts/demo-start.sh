@@ -7,6 +7,7 @@
 #   3. Telemetry ingestor  (Go)                         → TimescaleDB
 #   4. Compliance engine   (Go/HTTP)                    :8080
 #   5. Report generator    (Go/HTTP + headless Chrome)  :8082
+#   6. Web app             (Vite/React)                 :5173
 #
 # Logs written to /tmp/liftiq-*.log
 # PIDs written to /tmp/liftiq-*.pid
@@ -48,7 +49,7 @@ wait_for_port() {
 
 # ── 0. Pre-flight ───────────────────────────────────────────────────────────
 
-if [[ -f "$PID_DIR/liftiq-simulator.pid" ]] || [[ -f "$PID_DIR/liftiq-compliance.pid" ]] || [[ -f "$PID_DIR/liftiq-report.pid" ]]; then
+if [[ -f "$PID_DIR/liftiq-simulator.pid" ]] || [[ -f "$PID_DIR/liftiq-compliance.pid" ]] || [[ -f "$PID_DIR/liftiq-report.pid" ]] || [[ -f "$PID_DIR/liftiq-web.pid" ]]; then
   warn "Demo may already be running. Run 'make demo-down' first, or check /tmp/liftiq-*.pid"
   exit 1
 fi
@@ -132,6 +133,38 @@ echo $! > "$PID_DIR/liftiq-report.pid"
 
 wait_for_port "report" 8082
 
+# ── 6. Web App ──────────────────────────────────────────────────────────────
+
+info "Starting web app..."
+cd "$REPO_ROOT/liftiq-web"
+
+if [[ ! -d "node_modules" ]]; then
+  info "Installing web app dependencies..."
+  npm install > /dev/null 2>&1
+fi
+
+npm run build > /dev/null 2>&1
+
+nohup npx vite preview --port 5173 \
+  > "$LOG_DIR/liftiq-web.log" 2>&1 &
+echo $! > "$PID_DIR/liftiq-web.pid"
+
+# Wait for Vite preview to serve (no /health — check with curl on /)
+info "Waiting for web app on port 5173..."
+local_i=0
+while ! curl -sf "http://localhost:5173/" > /dev/null 2>&1; do
+  sleep 1
+  local_i=$((local_i + 1))
+  if [[ $local_i -ge 15 ]]; then
+    error "Web app did not start within 15s"
+    error "Check log: $LOG_DIR/liftiq-web.log"
+    exit 1
+  fi
+  printf '.'
+done
+echo ""
+success "Web app is running on :5173"
+
 # ── Done ────────────────────────────────────────────────────────────────────
 
 echo ""
@@ -139,17 +172,19 @@ echo -e "${GREEN}╔════════════════════
 echo -e "${GREEN}║        LiftIQ Phase 2 stack is up            ║${NC}"
 echo -e "${GREEN}╚══════════════════════════════════════════════╝${NC}"
 echo ""
+echo -e "  ${GREEN}Web app              http://localhost:5173${NC}"
 echo -e "  Elevator simulator   http://localhost:8000/elevators"
 echo -e "  Compliance engine    http://localhost:8080/units"
 echo -e "  Report generator     http://localhost:8082/health"
 echo -e "  Simulator docs       http://localhost:8000/docs"
 echo ""
 echo -e "  Logs:"
+echo -e "    Web app     $LOG_DIR/liftiq-web.log"
 echo -e "    Simulator   $LOG_DIR/liftiq-simulator.log"
 echo -e "    Ingestor    $LOG_DIR/liftiq-ingestor.log"
 echo -e "    Compliance  $LOG_DIR/liftiq-compliance.log"
 echo -e "    Report      $LOG_DIR/liftiq-report.log"
 echo ""
 echo -e "  ${YELLOW}Wait ~10 seconds for the first telemetry rows to be ingested,${NC}"
-echo -e "  ${YELLOW}then open the mobile app or run: make demo-status${NC}"
+echo -e "  ${YELLOW}then open http://localhost:5173 or run: make demo-status${NC}"
 echo ""
