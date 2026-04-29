@@ -1,0 +1,255 @@
+{
+  "document": {
+    "filename": "Smartrise_C4_Technical_Manual_Rev3.pdf",
+    "controller_make": "Smartrise",
+    "controller_model": "C4",
+    "page_count": 186
+  },
+  "chunks": [
+    {
+      "section": "Chapter 1: System Overview",
+      "content": "The Smartrise C4 is a microprocessor-based elevator controller designed for geared and gearless traction applications up to 1000 FPM. It supports up to 64 floors with group supervisory control for banks of up to 8 elevators. Communication interfaces include BACnet/IP (standard), Modbus TCP (optional module SR-MOD-100), and CAN bus for inter-car communication. The controller uses a modular architecture with swappable I/O boards, a main CPU board (SR-CPU-400), and an integrated drive unit.",
+      "page_number": 5
+    },
+    {
+      "section": "Chapter 1: System Overview",
+      "content": "The C4 controller firmware can be updated via USB or over BACnet using the Smartrise Configuration Tool (SCT) software. Current firmware version is 4.7.2 (released January 2026). Firmware updates require the elevator to be in maintenance mode with car-top inspection station active. Never update firmware while the elevator is in normal service.",
+      "page_number": 8
+    },
+    {
+      "section": "Chapter 2: Wiring — Main Power",
+      "content": "Terminal block TB-1 (Main Power): L1, L2, L3 connect to 3-phase 480VAC supply. Ground lug G1 connects to building ground bus. Fuses F1-F3 are 60A class J time-delay. The drive input contactor K1 is controlled by the safety circuit relay SR-1. Never energize the controller without verifying proper phase rotation using the built-in phase rotation indicator LED on the CPU board.",
+      "page_number": 15
+    },
+    {
+      "section": "Chapter 2: Wiring — Door Operator",
+      "content": "Terminal block TB-3 (Door Operator): Pins 1-4 connect to door operator motor (DO+, DO-, DOC, DOB). Pins 5-8 connect to car-top inspection station (INS-UP, INS-DN, INS-EN, INS-COM). Pin 9 is the door zone sensor input (DZ). Pin 10 is the gate switch input (GS). The door operator motor is controlled by the SR-DO-150 door operator board. Maximum motor current draw is 5A continuous, 8A peak during acceleration.",
+      "page_number": 18
+    },
+    {
+      "section": "Chapter 2: Wiring — Safety Circuit",
+      "content": "The safety circuit is a series loop of normally-closed contacts that must all be closed for the elevator to operate. The circuit begins at terminal TB-5 pin 1 (SC-START) and returns at TB-5 pin 20 (SC-RETURN). Components in the safety circuit include: governor switch, car safeties, buffer switch (pit), overhead limit switches (upper and lower), car-top emergency stop, pit stop switch, door interlocks (all hoistway doors), and the car gate switch. If any contact opens, the safety relay SR-1 de-energizes and the controller removes power from the drive.",
+      "page_number": 22
+    },
+    {
+      "section": "Chapter 2: Wiring — BACnet Interface",
+      "content": "The BACnet/IP interface is built into the CPU board. Connect to the building network via the RJ-45 jack labeled 'BACnet' on the CPU board face plate. Default IP configuration is DHCP. For static IP, configure via the SCT software or the controller's LCD menu: Setup → Network → BACnet IP. The default BACnet device ID is the controller serial number (6 digits). BACnet objects exposed include AnalogInput (motor current, temperature, door force), BinaryInput (safety circuits), and the Elevator Group Object per ASHRAE 135-2012bj.",
+      "page_number": 25
+    },
+    {
+      "section": "Chapter 3: Commissioning",
+      "content": "Commissioning sequence: 1) Verify all safety circuit contacts are closed (check SC-OK LED on CPU board). 2) Run learn mode to map floor heights: Maintenance mode → LCD menu → Setup → Learn Floors. The car travels slowly to each floor and records encoder counts. 3) Run door timing adjustment: Setup → Doors → Auto-Tune. The controller measures open/close times and adjusts speed profiles. 4) Run brake test: Setup → Brake → Test. Measures brake engagement time (must be < 80ms per ASME A17.1 §8.6.4.1). 5) Run full load test at contract speed.",
+      "page_number": 32
+    },
+    {
+      "section": "Chapter 4: Maintenance — Quarterly Brake Inspection",
+      "content": "Quarterly brake inspection procedure (per ASME A17.1 §8.6.4): 1) Place car at mid-travel with no passengers. Engage car-top inspection mode. 2) Measure brake pad thickness using the inspection ports on each brake assembly. Minimum thickness: 3mm. Replace pads if thickness is below 4mm (approaching limit). 3) Run brake response test from controller LCD: Diagnostics → Brake → Response Test. Record response time in milliseconds. Acceptable range: 30-80ms. If response exceeds 60ms, adjust brake spring tension per Section 4.3. 4) Check brake coil resistance: should be 12-15 ohms at 20°C. Values outside this range indicate coil degradation. 5) Inspect brake mounting bolts for torque: 45 ft-lbs.",
+      "page_number": 41
+    },
+    {
+      "section": "Chapter 4: Maintenance — Annual Door Operator Service",
+      "content": "Annual door operator service procedure: 1) Clean door tracks with degreaser and inspect for debris or damage. 2) Lubricate door track rollers with Smartrise-approved grease (SR-LUB-200 or equivalent synthetic lithium grease). 3) Measure door close force using a calibrated force gauge at the leading edge, mid-height. Maximum allowable force: 135N (30 lbs) per ASME A17.1 §2.13.4. 4) Measure door close time: must not exceed 5 seconds from fully open to fully closed. 5) Check door operator belt/chain tension. Belt deflection should be 5-8mm at mid-span. 6) Replace door operator belt if fraying, cracking, or stretch exceeds 2% of original length. Part number: SR-BLT-300 (standard), SR-BLT-310 (heavy-duty for high-traffic).",
+      "page_number": 48
+    },
+    {
+      "section": "Chapter 4: Maintenance — Motor Lubrication Schedule",
+      "content": "Geared machine motor lubrication: Apply SR-LUB-100 synthetic gear oil every 2,500 run-hours or 6 months, whichever comes first. Oil capacity: 3.2 quarts. Drain old oil from the drain plug at the bottom of the gear case before refilling. Check oil level at the sight glass — level should be between the MIN and MAX marks. Gearless machine motor: Bearings are sealed and lubricated for life (rated 20,000 hours). Replace bearings when vibration exceeds 0.15g RMS or motor current draw exceeds 120% of nameplate at rated load. Bearing part number: SR-BRG-500 (drive end), SR-BRG-510 (non-drive end).",
+      "page_number": 52
+    },
+    {
+      "section": "Chapter 4: Maintenance — Leveling Accuracy Adjustment",
+      "content": "If leveling accuracy exceeds ±6mm (half of the 12.7mm ADA limit), perform the following: 1) Check door zone sensor alignment. The sensor magnet on the hoistway should be centered in the sensor head gap with 3-5mm clearance on each side. 2) Verify encoder coupling is tight. The encoder is mounted on the non-drive end of the motor shaft. A loose coupling causes position drift. Tighten the set screw to 8 in-lbs. 3) Run the re-learn procedure: Setup → Learn Floors → Re-Learn. This recalibrates floor positions. 4) If leveling is still out of spec, check the load weighing device calibration: Diagnostics → Load Cell → Calibrate. The car should read 0% with no load and 100% at contract capacity.",
+      "page_number": 55
+    },
+    {
+      "section": "Chapter 5: Fault Codes — E-01",
+      "content": "E-01: Drive Fault — Overcurrent. The motor drive detected current exceeding 150% of rated for more than 2 seconds. Likely causes: 1) Motor winding short — measure phase-to-phase resistance (should be balanced within 5%). 2) Drive IGBT module failure — inspect for visible burn marks on the drive board. 3) Excessive mechanical load — check for stuck brake, guide shoe binding, or misaligned rails. 4) Incorrect motor parameters — verify motor nameplate data matches controller settings (Setup → Motor → Parameters). Clear fault by cycling the controller disconnect or pressing the RESET button on the CPU board. If fault recurs within 3 starts, the controller enters lockout mode (3 strikes). Lockout requires a technician code to reset: Maintenance → Lockout → Reset (code: 4721).",
+      "page_number": 62
+    },
+    {
+      "section": "Chapter 5: Fault Codes — E-02",
+      "content": "E-02: Drive Fault — Overvoltage. DC bus voltage exceeded 800VDC. This typically occurs during regenerative braking when the elevator is decelerating with a heavy load going down. Likely causes: 1) Regenerative braking resistor open — check continuity of the braking resistor (R-BRK, located in the controller cabinet top). Resistance should be 15-20 ohms. 2) Brake resistor contactor K-BRK not engaging — listen for contactor click during deceleration. Check coil voltage at K-BRK terminals. 3) High utility voltage — measure incoming 3-phase voltage. If consistently above 510VAC, install a buck transformer. Clear fault and restart.",
+      "page_number": 64
+    },
+    {
+      "section": "Chapter 5: Fault Codes — E-03",
+      "content": "E-03: Motor Overtemperature. Motor temperature sensor (PTC thermistor) has exceeded the trip threshold of 155°C. The controller will stop the elevator at the nearest floor and open doors before shutting down the drive. Likely causes: 1) Excessive duty cycle — reduce traffic during peak hours or check group supervisory settings. 2) Ventilation blockage — check machine room ventilation. Motor cooling fan should be running when motor is active. 3) Ambient temperature too high — machine room should not exceed 40°C per ASME A17.1. 4) Motor bearing failure — high friction generates heat. Check vibration levels. Allow the motor to cool below 100°C before resetting. If fault occurs repeatedly, derate the elevator speed or reduce trips per hour.",
+      "page_number": 66
+    },
+    {
+      "section": "Chapter 5: Fault Codes — E-04",
+      "content": "E-04: Encoder Fault. The position encoder has lost signal or reported an error. The elevator will make an emergency stop and set the brake. Likely causes: 1) Encoder cable disconnected — check the 12-pin connector at the encoder and at the CPU board (J7). 2) Encoder coupling slipped — the encoder is coupled to the motor shaft via a flexible coupling. Check set screw torque (8 in-lbs). 3) Encoder failure — swap with a known good unit (part SR-ENC-200). 4) Electrical noise — route encoder cable away from power cables. Use shielded cable if not already installed. After clearing the fault, run a re-learn procedure (Setup → Learn Floors) to recalibrate positions.",
+      "page_number": 68
+    },
+    {
+      "section": "Chapter 5: Fault Codes — E-05",
+      "content": "E-05: Safety Circuit Open. The safety circuit series loop has been interrupted. The controller cannot determine which specific device opened because the safety circuit is a simple series loop. Troubleshooting: 1) Check the SC-STATUS LEDs on the safety circuit board (SR-SC-100). Each LED corresponds to a zone of the safety circuit. A dark LED indicates the open zone. 2) Common causes: door interlock not fully engaged (most frequent), governor overspeed switch tripped, pit stop switch bumped, car-top emergency stop activated. 3) For intermittent E-05 faults, check all safety circuit wiring connections for loose terminals. Tighten all safety circuit terminal screws to 5 in-lbs. 4) Use the controller's safety circuit monitor: Diagnostics → Safety → Monitor. This shows real-time status of each monitored safety device.",
+      "page_number": 70
+    },
+    {
+      "section": "Chapter 5: Fault Codes — E-06",
+      "content": "E-06: Door Zone Fault. The car is not in the door zone when doors were commanded to open. This is a safety fault — doors should only open when the car is within ±75mm of a floor landing. Likely causes: 1) Door zone sensor misaligned — check sensor alignment (Chapter 4, Leveling section). 2) Car crept out of zone due to brake slip — run brake test (Diagnostics → Brake → Response Test). 3) Incorrect floor height data — re-learn floors. 4) Door zone sensor failure — test with a voltmeter at TB-3 pin 9 (DZ). Should read 24VDC when car is in zone, 0VDC when out of zone. Replace sensor (part SR-DZ-200) if output is incorrect.",
+      "page_number": 72
+    },
+    {
+      "section": "Chapter 5: Fault Codes — E-07",
+      "content": "E-07: Door Timeout. Doors failed to fully open or close within the configured timeout period (default: 30 seconds for open, 30 seconds for close). Likely causes: 1) Door track obstruction — inspect tracks for debris, ice, or bent track. 2) Door operator motor failure — check motor current on the controller display (Diagnostics → Doors → Motor Current). Normal is 1.5-3.0A. Above 5A indicates binding. 3) Door operator belt/chain broken — visually inspect. 4) Door operator board SR-DO-150 failure — swap with known good unit. 5) For intermittent timeouts during closing, check the nudging function setting. The controller may be repeatedly detecting obstructions and reversing. Adjust the obstruction sensitivity: Setup → Doors → Obstruction Sensitivity.",
+      "page_number": 74
+    },
+    {
+      "section": "Chapter 5: Fault Codes — E-08",
+      "content": "E-08: Door Interlock Bypass Detected. The controller detected that car is running with a door interlock in the bypassed state. This is a critical safety fault. The controller will immediately stop the car and set the brake. This fault cannot be cleared by a simple reset — it requires a technician-level reset with fault acknowledgment. Likely causes: 1) Interlock jumper wire left in place after maintenance. Remove all jumpers and verify each interlock engages properly. 2) Interlock switch failure — the interlock is mechanically engaged but the electrical contact is not closing. Replace the interlock assembly. 3) Wiring short in the interlock circuit. Check interlock wiring for insulation damage.",
+      "page_number": 76
+    },
+    {
+      "section": "Chapter 5: Fault Codes — E-09",
+      "content": "E-09: Leveling Error. The elevator stopped more than 12.7mm (½ inch) from the floor level after a re-leveling attempt. This violates ADA accessibility requirements. The controller logs the error but allows continued operation with a warning. Likely causes: 1) Load weighing device miscalibrated — heavy loads cause the car to sink below floor level after doors open. Recalibrate: Diagnostics → Load Cell → Calibrate. 2) Rope stretch — on geared machines with rope suspension, rope stretch accumulates over time. Adjust rope hitch spring tension or shorten ropes. 3) Brake slippage — if the car drifts after stopping, the brake is not holding. Inspect brake pads and adjust spring tension.",
+      "page_number": 78
+    },
+    {
+      "section": "Chapter 5: Fault Codes — E-10",
+      "content": "E-10: Communication Timeout. The CPU board has lost communication with one or more I/O boards on the internal CAN bus. The elevator will stop at the nearest floor. Likely causes: 1) Loose ribbon cable between CPU and I/O boards — reseat all ribbon cable connectors in the controller cabinet. 2) I/O board failure — check the STATUS LED on each I/O board. Green = OK, Red = fault, Off = no power/communication. 3) CAN bus termination — the CAN bus requires 120-ohm termination resistors at each end. Verify termination with an ohmmeter: disconnect power, measure between CAN-H and CAN-L at each end. Should read 60 ohms (two 120-ohm resistors in parallel).",
+      "page_number": 80
+    },
+    {
+      "section": "Chapter 5: Fault Codes — E-11",
+      "content": "E-11: Brake Engagement Timeout. The brake did not engage within the 80ms threshold after the controller commanded it. This is a safety-critical fault. The controller activates the emergency backup brake (if equipped) or makes a controlled stop using the drive. Likely causes: 1) Brake coil low voltage — measure voltage at the brake coil terminals during engagement. Should be 90-110VDC. Low voltage indicates power supply issue. 2) Brake mechanical binding — inspect brake arm pivot for rust or debris. 3) Brake spring fatigue — if engagement time has been gradually increasing over months, the brake springs may need replacement (part SR-BRK-SPRING-100). 4) Brake coil degradation — check coil resistance (12-15 ohms). Higher resistance means internal damage.",
+      "page_number": 82
+    },
+    {
+      "section": "Chapter 5: Fault Codes — E-12",
+      "content": "E-12: Overspeed Governor Trip. The overspeed governor detected car speed exceeding 115% of contract speed. The governor mechanically trips the safety device, which grips the guide rails and stops the car. This is a critical safety activation, not a malfunction. To reset: 1) Place the elevator on car-top inspection mode. 2) Run the car slowly in the DOWN direction until the governor resets (you will hear/feel it click back). 3) Inspect the safety device jaws on both car safeties for guide rail marks. File smooth if needed. 4) Run the governor at contract speed and verify trip speed with a tachometer. Governor should trip at 115% ± 5% of contract speed. Adjust trip speed with the governor adjustment screw if needed. 5) Document the governor test per ASME A17.1 §2.17.3.",
+      "page_number": 84
+    },
+    {
+      "section": "Chapter 5: Fault Codes — E-13",
+      "content": "E-13: Vibration Alarm. The accelerometer on the motor or car frame detected vibration exceeding the warning threshold of 0.12g RMS. The controller logs a warning but does not stop the elevator. If vibration exceeds the critical threshold of 0.15g RMS, the controller will reduce speed to 50% and log fault E-14. Likely causes: 1) Motor bearing wear — the most common cause. Order replacement bearings (SR-BRG-500, SR-BRG-510) and schedule replacement. 2) Guide shoe wear — inspect roller guides for flat spots or excessive play. 3) Rail misalignment — check rail joints for step-offs. 4) Rope vibration — check for worn sheave grooves or misaligned sheaves. 5) Loose mounting bolts on motor, machine base, or guide rail brackets.",
+      "page_number": 86
+    },
+    {
+      "section": "Chapter 5: Fault Codes — E-14",
+      "content": "E-14: Vibration Critical. Vibration exceeded 0.15g RMS. The controller has reduced car speed to 50% of contract speed as a protective measure. The elevator remains in service at reduced speed until a technician acknowledges and clears the fault. To clear: Maintenance → Faults → Acknowledge E-14 (requires technician code). Before clearing, identify and address the root cause per the E-13 troubleshooting guide. If vibration exceeds 0.20g, the controller will take the elevator out of service entirely.",
+      "page_number": 88
+    },
+    {
+      "section": "Chapter 5: Fault Codes — E-15",
+      "content": "E-15: Fire Service Recall Activated. The fire alarm system has activated the elevator's fire service recall (Phase I per ASME A17.1 §2.27.3). The elevator will return to the designated recall floor (typically lobby) non-stop, open doors, and shut down. The controller disables all hall calls and car calls during recall. The elevator cannot be returned to normal service until the fire alarm is cleared and a firefighter or technician switches the Fire Service key switch from Phase I back to Normal. Note: Phase II (firefighter operation) is entered by turning the in-car key switch. During Phase II, the elevator responds only to car calls and door open/close buttons. Doors do not open automatically.",
+      "page_number": 90
+    },
+    {
+      "section": "Chapter 6: Parts Catalog — Drive Components",
+      "content": "Drive assembly components: SR-DRV-400 (complete drive unit, includes IGBT module and control board), SR-IGBT-410 (IGBT power module replacement only), SR-DRV-CAP-420 (DC bus capacitor bank, set of 4), SR-DRV-FAN-430 (drive cooling fan assembly), SR-BRK-RES-440 (regenerative braking resistor, 15 ohm 2kW). All drive components are keyed to the C4 controller — do not substitute components from other Smartrise controller models without consulting Smartrise technical support. Lead time for drive components is typically 2-3 weeks from authorized distributors.",
+      "page_number": 95
+    },
+    {
+      "section": "Chapter 6: Parts Catalog — Door Operator Components",
+      "content": "Door operator components: SR-DO-150 (door operator controller board), SR-DO-MOT-160 (door operator motor, 1/2 HP 90VDC), SR-BLT-300 (door operator belt, standard duty), SR-BLT-310 (door operator belt, heavy-duty for high-traffic), SR-DZ-200 (door zone sensor with 5m cable), SR-INT-210 (hoistway door interlock assembly, includes roller, contact block, and mounting bracket), SR-GS-220 (car gate switch assembly). When replacing the door operator belt, verify belt tension after installation. New belts stretch slightly during the first 48 hours of operation — re-tension after 2 days.",
+      "page_number": 97
+    },
+    {
+      "section": "Chapter 6: Parts Catalog — Safety Components",
+      "content": "Safety components: SR-GOV-300 (overspeed governor assembly, specify contract speed when ordering), SR-SAF-310 (car safety assembly, progressive type for speeds above 200 FPM), SR-SAF-320 (car safety assembly, instantaneous type for speeds 200 FPM and below), SR-BUF-330 (oil buffer assembly, spring buffers available for low-speed applications), SR-SC-100 (safety circuit monitoring board with zone LEDs). Governor replacement requires a full Category 1 test per ASME A17.1 §8.6.4.20. Safety replacement requires a full Category 5 test per ASME A17.1 §8.6.4.21. Both tests must be witnessed by the local AHJ (Authority Having Jurisdiction).",
+      "page_number": 99
+    },
+    {
+      "section": "Chapter 6: Parts Catalog — Sensors and Boards",
+      "content": "Sensors and boards: SR-CPU-400 (main CPU board), SR-IO-410 (digital I/O expansion board, 32 inputs / 16 outputs), SR-AIO-420 (analog I/O board, 8 analog inputs 0-10V / 4 analog outputs), SR-ENC-200 (shaft encoder, 1024 PPR, with flexible coupling), SR-LW-230 (load weighing transducer, 0-150% capacity), SR-ACC-240 (vibration accelerometer, 3-axis, MEMS type), SR-PTC-250 (motor PTC thermistor kit, set of 3 for 3-phase motor). All boards are ESD-sensitive. Use an ESD wrist strap when handling. Store boards in anti-static bags.",
+      "page_number": 101
+    },
+    {
+      "section": "Chapter 7: Safety Procedures — Lockout/Tagout",
+      "content": "LOCKOUT/TAGOUT PROCEDURE (per OSHA 29 CFR 1910.147 and ASME A17.1 §8.1): Before performing any maintenance inside the hoistway or on the car top: 1) Notify building management and post 'Elevator Out of Service' signs at each landing. 2) Place the elevator on car-top inspection mode and ride to the work area. 3) Open and lock the main line disconnect switch in the controller room. Apply a personal padlock and danger tag. 4) Verify zero energy by pressing the UP and DOWN buttons on the car-top station — the car should not move. 5) If working on the door operator, also disconnect and lock the door operator power supply. 6) If working in the pit, also engage the pit stop switch and verify it is operational. NEVER enter the hoistway with the main disconnect energized unless on car-top inspection mode.",
+      "page_number": 110
+    },
+    {
+      "section": "Chapter 7: Safety Procedures — Brake Testing Protocol",
+      "content": "BRAKE TESTING PROTOCOL (per ASME A17.1 §8.6.4): Category 1 test (annual): With the car at the top floor, loaded to 125% of rated capacity, remove power to the drive while traveling at full speed in the DOWN direction. The brake must stop and hold the car within the specified stopping distance. Record the stopping distance. Category 3 test (quarterly from controller): Run the controller's built-in brake test (Diagnostics → Brake → Response Test). This measures the time from brake command to full engagement. Acceptable: < 80ms. Alert at > 60ms. Category 5 test (after safety device replacement): Full rated-load test with safety device actuation. This test is destructive to guide rails — only perform when required by the AHJ.",
+      "page_number": 115
+    },
+    {
+      "section": "Chapter 7: Safety Procedures — Door Close Force Testing",
+      "content": "DOOR CLOSE FORCE TESTING (per ASME A17.1 §2.13.4): Use a calibrated door force gauge (Fisher or equivalent). Place the gauge at the leading edge of the door panel at the mid-height (42 inches from the floor). Trigger the door close command and record the peak force reading. The maximum allowable kinetic energy is 2.5 ft-lbs and the maximum force is 30 lbs (135 Newtons). If force exceeds 100N, adjust the door operator 'close force' parameter: Setup → Doors → Close Force. Start at 70% and increase in 5% increments until doors close reliably. If force exceeds 120N even at minimum close force setting, inspect door tracks for binding and check the door clutch mechanism.",
+      "page_number": 118
+    },
+    {
+      "section": "Chapter 7: Safety Procedures — Emergency Procedures",
+      "content": "PASSENGER ENTRAPMENT RESCUE: 1) Determine car position using the controller display (Main Screen → Car Position) or by checking floor indicators. 2) If car is near a floor (within 18 inches), use the controller's manual move function: Maintenance → Manual → Slow Speed. Move car to the nearest floor and open doors. 3) If the controller is non-functional, use the manual brake release lever (located on the brake assembly, painted red). Apply gentle hand pressure to the car — the car will move under gravity. Lower the car to the nearest landing below. WARNING: Do not release the brake on a gearless machine without first confirming the car position — the car may move rapidly under load imbalance. 4) For gearless machines with no manual brake release, use the emergency battery lowering device (if equipped) or wait for specialized rescue equipment.",
+      "page_number": 120
+    },
+    {
+      "section": "Chapter 8: Troubleshooting — Motor Issues",
+      "content": "Motor runs hot (>80°C) but no E-03 fault: The motor may be running in a degraded condition below the thermistor trip point but above normal operating temperature. Check: 1) Machine room temperature — should be below 40°C. Add ventilation if needed. 2) Motor cooling fan operation — the fan should run whenever the motor is active. Check fan relay K-FAN on the I/O board. 3) Motor winding resistance — unbalanced phase resistance (>5% difference) indicates a developing winding fault. Measure with motor disconnected from drive. 4) Motor bearing condition — a failing bearing increases friction and heat. Check vibration readings on the controller (Diagnostics → Motor → Vibration). Values above 0.10g warrant investigation.",
+      "page_number": 125
+    },
+    {
+      "section": "Chapter 8: Troubleshooting — Motor Issues",
+      "content": "Motor current higher than expected: Normal no-load current for a geared C4 installation is 30-40% of nameplate FLA. Normal full-load current is 90-100% of nameplate FLA. If current consistently exceeds 100% at rated load: 1) Check brake drag — the brake may be partially engaging during travel. Run the car with brake manually released (maintenance mode only) and compare current. 2) Check guide shoe condition — worn or tight guide shoes add friction. 3) Check rope tension balance — uneven rope tensions cause one side of the traction sheave to work harder. 4) Check motor alignment — misalignment between motor and gear box causes additional load. Use a dial indicator to verify alignment within 0.005 inches.",
+      "page_number": 127
+    },
+    {
+      "section": "Chapter 8: Troubleshooting — Door Issues",
+      "content": "Doors won't close (repeated reversals): The door obstruction detection system may be too sensitive. Check: 1) Adjust obstruction sensitivity: Setup → Doors → Obstruction Sensitivity. Range is 1-10, default is 5. Increase to reduce sensitivity (max 8 for ADA compliance). 2) Check for items in the door track — coins, debris, and ice are common culprits. 3) Check door roller condition — worn rollers cause erratic door movement that triggers obstruction detection. 4) Check the door nudging timer — if enabled, after the nudging timeout (default 30 seconds), the door should close at reduced speed with audible warning. Verify nudging is enabled: Setup → Doors → Nudge Enable.",
+      "page_number": 130
+    },
+    {
+      "section": "Chapter 8: Troubleshooting — Door Issues",
+      "content": "Door close force too high (>120N): 1) Clean and lubricate door tracks with SR-LUB-200 grease. 2) Check door hanger rollers for flat spots — replace if worn (part SR-HNGR-100). 3) Check gibs (door guides at the sill) for proper clearance — should be 3-5mm. Tight gibs cause excessive friction. 4) Check the door closer spring tension — if a mechanical closer is installed, spring may be too tight. 5) Verify the door operator belt tension — an over-tensioned belt increases the effective closing force. 6) Check the clutch mechanism — a stiff clutch transfers too much force to the door panels. Lubricate clutch pivot points.",
+      "page_number": 132
+    },
+    {
+      "section": "Chapter 8: Troubleshooting — Communication Issues",
+      "content": "BACnet device not discoverable: 1) Verify the BACnet port is connected to the building network (RJ-45 jack labeled 'BACnet'). Check LINK and ACT LEDs — both should be lit. 2) Verify IP configuration: LCD menu → Setup → Network → BACnet IP. If set to DHCP, check with building IT for the assigned IP. 3) Verify BACnet port 47808/UDP is not blocked by a firewall. 4) Use a BACnet explorer tool (YABE or similar) from a laptop on the same subnet to verify device discovery. 5) If the device is discovered but objects are not readable, check the BACnet access credentials: Setup → Network → BACnet → Authentication. Default credentials: username 'admin', password 'smartrise' (change these in production).",
+      "page_number": 135
+    },
+    {
+      "section": "Chapter 8: Troubleshooting — Communication Issues",
+      "content": "Modbus TCP connection refused: The Modbus TCP module (SR-MOD-100) is an optional add-on. Verify it is installed in expansion slot 3 of the controller backplane. 1) Check the STATUS LED on the Modbus module — Green = active, Amber = initializing, Red = fault. 2) Verify Modbus configuration: LCD menu → Setup → Network → Modbus. Default port is 502, unit ID is 1. 3) Test with a Modbus client tool (ModRSsim2 or pymodbus). Read holding register 40001 — should return motor current in raw units (value × 0.01 = amps). 4) If the module STATUS LED is red, power-cycle the controller. If the fault persists, replace the module (part SR-MOD-100).",
+      "page_number": 137
+    },
+    {
+      "section": "Chapter 8: Troubleshooting — Ride Quality",
+      "content": "Poor ride quality (jerky starts/stops): 1) Check drive parameters: Setup → Drive → Speed Profile. Verify acceleration rate (default 1.0 m/s²), jerk limit (default 2.0 m/s³), and deceleration rate (default 1.2 m/s²). 2) Check motor tuning — run the drive's auto-tune function: Setup → Drive → Auto-Tune. This measures motor parameters and updates the drive's internal model. The car should be empty during auto-tune. 3) Check encoder resolution — if the encoder has been replaced, verify the PPR setting matches the physical encoder (Setup → Encoder → PPR). 4) Check for mechanical issues — worn guide shoes, rail irregularities, or unbalanced ropes all contribute to poor ride quality.",
+      "page_number": 140
+    },
+    {
+      "section": "Chapter 8: Troubleshooting — Ride Quality",
+      "content": "Car creep (car moves slowly after stopping at a floor): The car may drift up to 25mm over several minutes. This is different from the initial re-leveling, which corrects within 2 seconds of stopping. Causes: 1) Brake not fully holding — run brake test (Diagnostics → Brake → Response Test). If holding current is below 80% of rated, the brake may be slipping. 2) Hydraulic leak (if hydraulic system) — check hydraulic oil level and inspect cylinder, valves, and piping for leaks. 3) Rope stretch under load — particularly noticeable on new installations. Ropes seat into sheave grooves over time. Adjust rope hitch if necessary. The controller should detect creep via the encoder and re-level automatically (if re-leveling is enabled: Setup → Leveling → Re-Level Enable).",
+      "page_number": 142
+    },
+    {
+      "section": "Chapter 9: BACnet Object Reference",
+      "content": "BACnet Analog Input objects exposed by the C4 controller: AI-0: Motor current (amps, float, real-time), AI-1: Motor temperature (°C, float, real-time), AI-2: Motor speed (RPM, float, real-time), AI-3: Motor run hours (hours, float, cumulative), AI-10: Door cycle count (integer, cumulative), AI-11: Door motor current (amps, float, real-time), AI-12: Door close force (Newtons, float, last measured), AI-13: Door close time (milliseconds, integer, last measured), AI-14: Door obstruction events (integer, cumulative since last reset), AI-20: Brake engagement count (integer, cumulative), AI-21: Brake holding current (amps, float, real-time), AI-22: Brake response time (milliseconds, integer, last test), AI-30: Vibration (g RMS, float, real-time), AI-31: Leveling accuracy (mm, float, last measured), AI-40: Trip count (integer, cumulative).",
+      "page_number": 150
+    },
+    {
+      "section": "Chapter 9: BACnet Object Reference",
+      "content": "BACnet Binary Input objects: BI-0: Door interlock status (1 = all interlocks closed, 0 = at least one open), BI-1: Governor OK (1 = normal, 0 = tripped), BI-2: Buffer OK (1 = normal, 0 = compressed), BI-3: Pit stop switch (1 = normal, 0 = activated), BI-4: Safety circuit (1 = complete, 0 = open). BACnet Multi-State Input objects: MSI-0: Car direction (1 = Up, 2 = Down, 3 = Idle). BACnet Analog Value objects: AV-0: Car position (floor number, integer). All BACnet objects support COV (Change of Value) subscriptions for real-time monitoring. Configure COV increment per object via the SCT software.",
+      "page_number": 152
+    },
+    {
+      "section": "Chapter 9: Modbus Register Map",
+      "content": "Modbus TCP register map for SR-MOD-100 module: Holding registers (read-only): 40001: Motor current × 100 (e.g., 1523 = 15.23A), 40002: Motor temperature × 10 (e.g., 523 = 52.3°C), 40003: Motor speed (RPM), 40004-40005: Motor run hours (32-bit float, big-endian), 40006-40007: Trip count (32-bit integer), 40010: Door cycle count (16-bit, wraps at 65535), 40011: Door motor current × 100, 40012: Door close force × 10 (e.g., 1180 = 118.0N), 40013: Door close time (ms), 40020: Brake engagement count (16-bit), 40021: Brake current × 100, 40022: Brake response time (ms). Discrete inputs (read-only): 10001: Door interlock, 10002: Governor OK, 10003: Buffer OK, 10004: Pit switch, 10005: Safety circuit. All discrete inputs: 1 = normal/OK, 0 = fault.",
+      "page_number": 155
+    },
+    {
+      "section": "Chapter 10: Specifications",
+      "content": "Smartrise C4 Controller Specifications: Maximum speed: 1000 FPM (5 m/s). Maximum floors: 64. Maximum group size: 8 cars. Power supply: 3-phase 208/480VAC, 50/60 Hz. Drive type: Regenerative PWM with IGBT. Motor types supported: AC induction (geared), PM synchronous (gearless). Encoder interface: Incremental (A/B/Z), 1024-4096 PPR. Communication: BACnet/IP (standard), Modbus TCP (optional SR-MOD-100), CAN bus (internal). Operating temperature: 0-50°C. Storage temperature: -20-70°C. Humidity: 5-95% non-condensing. Weight: 180 lbs (controller cabinet). Dimensions: 36\"W × 72\"H × 18\"D.",
+      "page_number": 160
+    },
+    {
+      "section": "Chapter 10: Specifications",
+      "content": "Supported door operator configurations: Single-speed center-opening (2-panel), single-speed side-opening (2-panel), two-speed center-opening (4-panel), two-speed side-opening (3-panel). Maximum door operator motor: 1 HP, 90VDC. Maximum door opening width: 72 inches (6 feet). Door operator board: SR-DO-150, supports position-based door control with programmable speed profiles for open, close, and nudging. Door open time programmable: 3-30 seconds per floor, independently configurable. Reduced open time available for freight service.",
+      "page_number": 162
+    },
+    {
+      "section": "Appendix A: Quick Reference — Common Fault Codes",
+      "content": "Quick reference fault code table: E-01: Drive overcurrent — Check motor, IGBT, mechanical binding. E-02: Drive overvoltage — Check braking resistor, bus voltage. E-03: Motor overtemp — Check ventilation, duty cycle. E-04: Encoder fault — Check cable, coupling, encoder. E-05: Safety circuit open — Check interlocks, switches, wiring. E-06: Door zone fault — Check DZ sensor, alignment. E-07: Door timeout — Check track, motor, belt. E-08: Interlock bypass — CRITICAL — Remove jumpers. E-09: Leveling error — Check load cell, ropes. E-10: CAN bus timeout — Check ribbon cables, termination. E-11: Brake timeout — SAFETY — Check coil, springs. E-12: Governor trip — SAFETY — Reset governor, test. E-13: Vibration warning — Monitor bearings. E-14: Vibration critical — SAFETY — Reduce speed, investigate. E-15: Fire recall — External fire alarm system.",
+      "page_number": 170
+    },
+    {
+      "section": "Appendix B: Preventive Maintenance Schedule",
+      "content": "Preventive maintenance schedule for Smartrise C4 installations: MONTHLY: Visual inspection of machine room (cleanliness, temperature, ventilation), check controller for fault history (Diagnostics → Faults → History), ride quality check (observe acceleration, leveling, door operation). QUARTERLY: Brake response test (Diagnostics → Brake → Response Test, record result), door close force measurement (force gauge test, record in N), clean and inspect car top equipment, check pit condition and lighting. SEMI-ANNUAL: Motor current and temperature trending (compare to baseline), guide shoe/roller inspection and replacement if worn, rope inspection (look for broken wires, diameter reduction, rust). ANNUAL: Full door operator service (see Chapter 4), motor lubrication (see Chapter 4), load test at 100% and 125% capacity, safety circuit verification test. FIVE-YEAR: Category 1 safety test (full-speed loaded), governor test, buffer test. All tests per ASME A17.1 §8.6.",
+      "page_number": 175
+    }
+  ]
+}

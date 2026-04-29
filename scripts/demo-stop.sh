@@ -49,6 +49,7 @@ stop_pid() {
 }
 
 stop_pid web
+stop_pid knowledge
 stop_pid report
 stop_pid compliance
 stop_pid ingestor

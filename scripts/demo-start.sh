@@ -7,7 +7,8 @@
 #   3. Telemetry ingestor  (Go)                         → TimescaleDB
 #   4. Compliance engine   (Go/HTTP)                    :8080
 #   5. Report generator    (Go/HTTP + headless Chrome)  :8082
-#   6. Web app             (Vite/React)                 :5173
+#   6. Knowledge base      (Go/HTTP + Ollama)           :8085
+#   7. Web app             (Vite/React)                 :5173
 #
 # Logs written to /tmp/liftiq-*.log
 # PIDs written to /tmp/liftiq-*.pid
@@ -133,7 +134,43 @@ echo $! > "$PID_DIR/liftiq-report.pid"
 
 wait_for_port "report" 8082
 
-# ── 6. Web App ──────────────────────────────────────────────────────────────
+# ── 6. Knowledge Base ──────────────────────────────────────────────────────
+
+info "Starting knowledge base..."
+cd "$REPO_ROOT/knowledge-base"
+make build > /dev/null
+make build-ingest > /dev/null
+
+nohup env \
+  DATABASE_URL="postgres://liftiq:liftiq@localhost:5432/liftiq?sslmode=disable" \
+  HTTP_PORT=8085 \
+  LOG_LEVEL=info \
+  ./bin/knowledged \
+  > "$LOG_DIR/liftiq-knowledge.log" 2>&1 &
+echo $! > "$PID_DIR/liftiq-knowledge.pid"
+
+wait_for_port "knowledge" 8085
+
+# Seed knowledge base if empty (first run only)
+info "Checking knowledge base seed data..."
+CHUNK_COUNT=$(curl -sf http://localhost:8085/documents | python3 -c "import sys,json; docs=json.load(sys.stdin).get('documents',[]); print(sum(d.get('chunk_count',0) for d in docs))" 2>/dev/null || echo "0")
+if [[ "$CHUNK_COUNT" == "0" ]]; then
+  if curl -sf http://localhost:11434/api/tags > /dev/null 2>&1; then
+    info "Seeding knowledge base (embedding 49 chunks via Ollama — may take ~30s)..."
+    ./bin/ingest --seed testdata/smartrise_c4_seed.json \
+      --database-url "postgres://liftiq:liftiq@localhost:5432/liftiq?sslmode=disable" \
+      > "$LOG_DIR/liftiq-knowledge-seed.log" 2>&1
+    success "Knowledge base seeded"
+  else
+    warn "Ollama not running — skipping knowledge base seed."
+    warn "Run: ollama pull nomic-embed-text && ollama pull llama3.2"
+    warn "Then: cd knowledge-base && make seed"
+  fi
+else
+  info "Knowledge base already has $CHUNK_COUNT chunks"
+fi
+
+# ── 7. Web App ──────────────────────────────────────────────────────────────
 
 info "Starting web app..."
 cd "$REPO_ROOT/liftiq-web"
@@ -176,9 +213,11 @@ echo -e "  ${GREEN}Web app              http://localhost:5173${NC}"
 echo -e "  Elevator simulator   http://localhost:8000/elevators"
 echo -e "  Compliance engine    http://localhost:8080/units"
 echo -e "  Report generator     http://localhost:8082/health"
+echo -e "  Knowledge base       http://localhost:8085/health"
 echo -e "  Simulator docs       http://localhost:8000/docs"
 echo ""
 echo -e "  Logs:"
+echo -e "    Knowledge   $LOG_DIR/liftiq-knowledge.log"
 echo -e "    Web app     $LOG_DIR/liftiq-web.log"
 echo -e "    Simulator   $LOG_DIR/liftiq-simulator.log"
 echo -e "    Ingestor    $LOG_DIR/liftiq-ingestor.log"

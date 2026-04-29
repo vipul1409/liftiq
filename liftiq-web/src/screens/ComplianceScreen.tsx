@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router';
 import { RuleRow } from '../components/RuleRow';
 import { StatusBadge } from '../components/StatusBadge';
 import { VoiceBar } from '../components/VoiceBar';
+import { KnowledgePanel } from '../components/KnowledgePanel';
 import { useCompliance } from '../hooks/useCompliance';
 import { useInspection } from '../context/InspectionContext';
 import { effectiveStatus } from '../hooks/useOverrides';
@@ -171,6 +172,9 @@ export function ComplianceScreen() {
           As of {new Date(data.as_of).toLocaleString()}
         </p>
       </div>
+
+      {/* Knowledge Base Search */}
+      <KnowledgePanel />
 
       {/* Sections */}
       <div className="max-w-3xl mx-auto">
