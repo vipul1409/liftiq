@@ -48,6 +48,7 @@ deploy/env/.env.dev.local
 
 # Node.js
 node_modules/
+*.tsbuildinfo
 
 # Build artifacts
 **/bin/
