@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help demo-up demo-down demo-status \
+.PHONY: help demo-up demo-down demo-down-reset demo-down-reset-hard demo-down-reset-volume demo-status \
         fault-door fault-brake fault-motor fault-safety fault-leveling clear-fault \
         logs-simulator logs-ingestor logs-compliance logs-report \
         mobile mobile-ios mobile-android \
@@ -15,9 +15,12 @@ help:
 	@echo "LiftIQ — Phase 2 orchestration"
 	@echo ""
 	@echo "  Local demo (native processes, fastest iteration)"
-	@echo "  make demo-up          Start all 5 services (simulator, ingestor, compliance, report)"
-	@echo "  make demo-down        Stop all services"
-	@echo "  make demo-status      Health check + live compliance summary"
+	@echo "  make demo-up               Start all 5 services (simulator, ingestor, compliance, report)"
+	@echo "  make demo-down             Stop all services (prompts to delete data)"
+	@echo "  make demo-down-reset       Stop all services + truncate data (keep schema)"
+	@echo "  make demo-down-reset-hard  Stop all services + drop all tables"
+	@echo "  make demo-down-reset-volume Stop + delete Docker volume (full wipe)"
+	@echo "  make demo-status           Health check + live compliance summary"
 	@echo ""
 	@echo "  Testing"
 	@echo "  make test-all         Run all tests (Go services + mobile)"
@@ -60,6 +63,15 @@ demo-up:
 
 demo-down:
 	./scripts/demo-stop.sh
+
+demo-down-reset:
+	./scripts/demo-stop.sh --reset
+
+demo-down-reset-hard:
+	./scripts/demo-stop.sh --reset-hard
+
+demo-down-reset-volume:
+	./scripts/demo-stop.sh --reset-volume
 
 demo-status:
 	./scripts/demo-status.sh
