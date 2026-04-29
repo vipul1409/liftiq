@@ -131,25 +131,26 @@ class ElevatorState:
         if self.injected_fault == "door_motor_degradation":
             # Door motor current rises as door cycles accumulate
             self.door_motor_amps = 2.1 + (self.door_cycle_count % 10000) * 0.0003
-            self.door_close_force_n += 0.05  # faster force increase
+            # ~0.5 N/tick → crosses 135 N from 118 N in ~34 s
+            self.door_close_force_n += 0.5
         elif self.injected_fault == "brake_wear":
-            # Brake response approaching limit (80 ms threshold)
-            self.brake_response_ms = int(75 + random.gauss(0, 3))
+            # Brake response at/above 80 ms threshold immediately
+            self.brake_response_ms = int(82 + random.gauss(0, 3))
         elif self.injected_fault == "motor_bearing_wear":
             # Accelerated motor current drift and vibration
-            self.motor_current_drift += 0.005
+            self.motor_current_drift += 0.02
             self.vibration_g = abs(random.gauss(0.18, 0.03))
         elif self.injected_fault == "safety_circuit_intermittent":
-            # Random intermittent safety circuit trip
-            if random.random() < 0.05:
+            # Random intermittent safety circuit trip (~20% chance per tick)
+            if random.random() < 0.20:
                 self.door_interlock_ok = False
                 self.safety_circuit_ok = False
             else:
                 self.door_interlock_ok = True
                 self.safety_circuit_ok = True
         elif self.injected_fault == "leveling_drift":
-            # Leveling creeping beyond ADA 12.7 mm threshold
-            self.leveling_accuracy_mm = abs(random.gauss(11.0, 1.5))
+            # Leveling above ADA 12.7 mm threshold immediately
+            self.leveling_accuracy_mm = abs(random.gauss(14.0, 1.0))
 
     def inject_fault(self, fault_type: Optional[str]) -> None:
         """Set or clear a fault. Pass None to clear."""
