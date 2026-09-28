@@ -58,11 +58,15 @@ stop_pid simulator
 # ── Database reset (runs while TimescaleDB is still up) ─────────────────────
 
 if [[ -z "$RESET_MODE" ]]; then
-  echo ""
-  read -r -p "$(echo -e "${YELLOW}Delete database data? [y/N]:${NC} ")" answer
-  case "$answer" in
-    [yY]|[yY][eE][sS]) RESET_MODE="truncate" ;;
-  esac
+  if [[ -t 0 ]]; then
+    echo ""
+    read -r -p "$(echo -e "${YELLOW}Delete database data? [y/N]:${NC} ")" answer
+    case "$answer" in
+      [yY]|[yY][eE][sS]) RESET_MODE="truncate" ;;
+    esac
+  else
+    info "Non-interactive shell — keeping database data (use --reset to clear)"
+  fi
 fi
 
 if [[ "$RESET_MODE" == "truncate" || "$RESET_MODE" == "hard" ]]; then
