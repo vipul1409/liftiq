@@ -71,9 +71,9 @@ func MapSnapshot(snap simulator.ElevatorSnapshot, unitID uuid.UUID, at time.Time
 		// A field absent or null in the simulator payload is recorded as
 		// "missing" (value 0) so the compliance engine reports Unknown rather
 		// than evaluating a fabricated zero.
-		quality := "good"
+		quality := store.QualityGood
 		if snap.IsMissing(e.name) {
-			quality = "missing"
+			quality = store.QualityMissing
 		}
 		rows[i] = store.Row{
 			Time:    at,

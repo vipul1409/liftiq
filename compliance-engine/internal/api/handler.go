@@ -118,11 +118,11 @@ func (h *Handler) fetchAndEvaluate(w http.ResponseWriter, r *http.Request, tag s
 	}
 
 	// Only good readings are evaluated. When the latest reading for a metric is
-	// "missing" or "stale", leaving it out makes its rule Unknown immediately
+	// not good (e.g. missing), leaving it out makes its rule Unknown immediately
 	// rather than evaluating a placeholder value.
 	values := make(rules.MetricValues, len(readings))
 	for _, rd := range readings {
-		if rd.Quality != "good" {
+		if rd.Quality != store.QualityGood {
 			continue
 		}
 		values[rd.Metric] = rd.Value

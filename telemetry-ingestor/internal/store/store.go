@@ -14,8 +14,15 @@ type Row struct {
 	UnitID  uuid.UUID
 	Metric  string
 	Value   float64
-	Quality string // "good" | "stale" | "missing"
+	Quality string // QualityGood or QualityMissing
 }
+
+// Metric quality values. Staleness is not a quality: the compliance engine
+// handles it with its stale window, by ignoring readings older than the window.
+const (
+	QualityGood    = "good"    // a real reading
+	QualityMissing = "missing" // placeholder row: the simulator payload lacked the field
+)
 
 // Store is the write surface for all elevator telemetry persistence.
 type Store interface {
