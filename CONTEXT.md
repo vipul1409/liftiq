@@ -1,21 +1,62 @@
-# LiftIQ domain glossary
+# LiftIQ
 
-**Inspection** — one technician's certification of one elevator unit at a point in time: the telemetry rule results, the technician's Overrides, photo evidence and signature. Ends in a signed Report.
+LiftIQ turns live telemetry from vertical-transport equipment into ASME A17.1 compliance evidence that a technician reviews, corrects and signs on site.
 
-**Rule result** (telemetry status) — the compliance engine's deterministic pass / fail / unknown for one ASME A17.1 rule, computed from the latest telemetry. It is evidence and is never edited; an Override sits beside it.
+## Language
 
-**Rule catalogue** — the 20 ASME A17.1 rules as data, held only in `compliance-engine/internal/rules/registry.go`. For each rule it records the metric, subsystem, comparison and threshold. See `docs/adr/0001`.
+**Unit**:
+One piece of vertical-transport equipment LiftIQ monitors, identified by its unit tag (for example ELV-003).
+_Avoid_: elevator, lift, device (when meaning the general concept)
 
-**Subsystem** — the display group a rule belongs to, e.g. "Door Operator". It comes from the Rule catalogue on every rule result. Results with no subsystem group under "Other".
+### Rules and telemetry
 
-**Comparison** — how a metric value is checked against a threshold: `at_most` (≤), `below` (<, service due at N), or `equals` (boolean safety fields).
+**Rule catalogue**:
+The fixed set of ASME A17.1 rules LiftIQ checks. Each rule names one Metric, a Subsystem, a Comparison and a threshold.
+_Avoid_: rule registry, rule list
 
-**Metric quality** — the state of a stored telemetry reading: `good` means a real reading, and `missing` means the simulator payload lacked the field. Only `good` readings are evaluated, so a latest reading that isn't good makes its rule unknown.
+**Subsystem**:
+The part of a Unit a rule concerns, such as Motor, Door Operator or Brake System.
+_Avoid_: category, section, group
 
-**Override** — the technician's manual call on a rule, `pass` or `fail` only. It can replace any telemetry status, including unknown. Clients send Overrides as a map of rule ID → status, separately from the rule results.
+**Metric**:
+One named, measurable quantity reported by a Unit, such as door close force or brake response time.
+_Avoid_: data point, field, sensor
 
-**Effective status** — the status the Report certifies for a rule: the Override if there is one, otherwise the telemetry status.
+**Comparison**:
+How a Metric value must relate to a rule's threshold to pass: at most the threshold, below it (service falls due at the threshold), or equal to it (safety circuits).
+_Avoid_: operator, condition
 
-**Inspection outcome** — the effective status of every rule plus the summary derived from them (overall is fail if any rule fails, unknown if any is unknown, otherwise pass). The report-generator's `report.Resolve` is authoritative. Clients compute the same thing only for on-screen display.
+**Metric quality**:
+Whether a stored reading is a real measurement (good) or a placeholder for a value the Unit did not report (missing). Only good readings count as evidence.
+_Avoid_: stale (staleness is about age, not quality — see Stale window)
 
-**Report** — the signed PDF, the compliance record. Every overridden row shows both the technician's call and the telemetry status, so the audit trail keeps both.
+**Stale window**:
+How old the latest good reading of a Metric may be before its rule's result becomes unknown.
+
+**Compliance snapshot**:
+The Rule results for one Unit as of one moment, as LiftIQ evaluates them from telemetry. It is what a technician reviews; it is not a Report.
+_Avoid_: compliance report, compliance check
+
+### Inspection
+
+**Inspection**:
+One technician's certification of one Unit, covering the latest Compliance snapshot at signing, the technician's Overrides, photo evidence and signature. An Inspection ends in a Report.
+
+**Rule result**:
+The deterministic pass, fail or unknown that LiftIQ derives for one rule from the latest good telemetry. It is evidence and is never edited.
+_Avoid_: telemetry status (when meaning the whole result), check
+
+**Override**:
+The technician's own pass or fail call on a rule, made against a specific Rule result and recorded beside it rather than replacing it. If that Rule result changes, the technician must confirm the Override again before it counts. It can be made for any rule, including one whose result is unknown.
+_Avoid_: manual status, correction
+
+**Effective status**:
+The status an Inspection certifies for a rule: the Override if there is one, otherwise the Rule result.
+
+**Inspection outcome**:
+The Effective status of every rule, plus the overall verdict: fail if any rule fails, unknown if any is unknown, otherwise pass.
+_Avoid_: summary (when meaning the verdict)
+
+**Report**:
+The signed record of an Inspection, and the only thing LiftIQ calls a report. For every overridden rule it shows both the technician's call and the Rule result.
+_Avoid_: PDF, certificate

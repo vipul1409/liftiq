@@ -108,7 +108,7 @@ liftiq/
     │   │   ├── UnitPicker.tsx             ← modal bottom sheet for unit selection
     │   │   └── VoiceBar.tsx               ← floating mic button + pulse/speaking-dots animation
     │   ├── hooks/
-    │   │   ├── useCompliance.ts           ← fetch compliance report + refetch
+    │   │   ├── useCompliance.ts           ← fetch Compliance snapshot + refetch
     │   │   ├── useUnits.ts                ← fetch unit list
     │   │   └── useVoice.ts                ← STT lifecycle, intent dispatch, TTS readback
     │   ├── store/overrides.ts             ← in-memory manual pass/fail overrides
