@@ -21,12 +21,12 @@ import (
 type fakePDFRenderer struct {
 	err    error
 	called bool
-	last   report.Request
+	last   report.Inspection
 }
 
-func (f *fakePDFRenderer) Render(_ context.Context, req report.Request) ([]byte, error) {
+func (f *fakePDFRenderer) Render(_ context.Context, in report.Inspection) ([]byte, error) {
 	f.called = true
-	f.last = req
+	f.last = in
 	if f.err != nil {
 		return nil, f.err
 	}
@@ -67,7 +67,6 @@ func validRequest() report.Request {
 		InspectedAt: time.Date(2026, 4, 20, 14, 30, 0, 0, time.UTC),
 		Technician:  "J. Smith",
 		Results:     fakeResults(),
-		Summary:     report.Summary{Pass: 20, Fail: 0, Unknown: 0, Overall: report.StatusPass},
 	}
 }
 
@@ -165,8 +164,40 @@ func TestGenerateReport_PassesUnitTagToRenderer(t *testing.T) {
 func TestGenerateReport_PassesResultsToRenderer(t *testing.T) {
 	fake := &fakePDFRenderer{}
 	post(t, newHandler(fake), validRequest())
-	if len(fake.last.Results) != 1 {
-		t.Errorf("renderer received %d results, want 1", len(fake.last.Results))
+	if len(fake.last.Rows) != 1 {
+		t.Errorf("renderer received %d rows, want 1", len(fake.last.Rows))
+	}
+}
+
+func TestGenerateReport_OverrideFailReachesRendererSummary(t *testing.T) {
+	fake := &fakePDFRenderer{}
+	req := validRequest()
+	req.Overrides = map[string]report.Status{"ASME-001": report.StatusFail}
+	rr := post(t, newHandler(fake), req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rr.Code)
+	}
+	want := report.Summary{Pass: 0, Fail: 1, Unknown: 0, Overall: report.StatusFail}
+	if fake.last.Summary != want {
+		t.Errorf("renderer summary = %+v, want %+v", fake.last.Summary, want)
+	}
+	row := fake.last.Rows[0]
+	if row.Effective != report.StatusFail || !row.Overridden || row.Status != report.StatusPass {
+		t.Errorf("row = effective %q overridden %v telemetry %q; want fail/true/pass",
+			row.Effective, row.Overridden, row.Status)
+	}
+}
+
+func TestGenerateReport_IgnoresClientSuppliedSummary(t *testing.T) {
+	fake := &fakePDFRenderer{}
+	body := map[string]any{
+		"unit_tag": "ELV-003",
+		"results":  fakeResults(),
+		"summary":  map[string]any{"pass": 0, "fail": 5, "unknown": 0, "overall": "fail"},
+	}
+	post(t, newHandler(fake), body)
+	if fake.last.Summary.Overall != report.StatusPass {
+		t.Errorf("renderer summary overall = %q, want pass (derived from results)", fake.last.Summary.Overall)
 	}
 }
 
@@ -194,6 +225,28 @@ func TestGenerateReport_Returns400WhenUnitTagMissing(t *testing.T) {
 func TestGenerateReport_Returns400WhenResultsEmpty(t *testing.T) {
 	req := validRequest()
 	req.Results = nil
+	rr := post(t, newHandler(&fakePDFRenderer{}), req)
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400", rr.Code)
+	}
+}
+
+func TestGenerateReport_Returns400WhenOverrideNamesUnknownRule(t *testing.T) {
+	fake := &fakePDFRenderer{}
+	req := validRequest()
+	req.Overrides = map[string]report.Status{"ASME-999": report.StatusPass}
+	rr := post(t, newHandler(fake), req)
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400", rr.Code)
+	}
+	if fake.called {
+		t.Error("renderer called for an invalid request")
+	}
+}
+
+func TestGenerateReport_Returns400WhenOverrideStatusInvalid(t *testing.T) {
+	req := validRequest()
+	req.Overrides = map[string]report.Status{"ASME-001": report.StatusUnknown}
 	rr := post(t, newHandler(&fakePDFRenderer{}), req)
 	if rr.Code != http.StatusBadRequest {
 		t.Errorf("status = %d, want 400", rr.Code)

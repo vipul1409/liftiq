@@ -10,6 +10,7 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import type { RuleStatus } from '../types/compliance';
+import { applyOverrides, summarise } from '../utils/inspectionOutcome';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Summary'>;
 
@@ -26,7 +27,8 @@ const BANNER_LABELS: Record<RuleStatus, string> = {
 };
 
 export function SummaryScreen({ route, navigation }: Props) {
-  const { unitTag, summary, asOf, results, photos, technician } = route.params;
+  const { unitTag, asOf, results, overrides, photos, technician } = route.params;
+  const summary = summarise(applyOverrides(results, overrides));
   const bannerColor = BANNER_COLORS[summary.overall];
   const bannerLabel = BANNER_LABELS[summary.overall];
   const formattedDate = new Date(asOf).toLocaleString();
@@ -71,9 +73,9 @@ export function SummaryScreen({ route, navigation }: Props) {
         onPress={() =>
           navigation.navigate('Signature', {
             unitTag,
-            summary,
             asOf,
             results,
+            overrides,
             photos,
             technician,
           })

@@ -8,7 +8,7 @@ import (
 
 func TestGroupBySubsystem_ReturnsExpectedSubsystems(t *testing.T) {
 	results := allPassResults()
-	groups := GroupBySubsystem(results)
+	groups := GroupBySubsystem(rows(results))
 
 	wantTitles := []string{"Motor", "Trip / Usage", "Door Operator", "Brake System", "Ride Quality", "Safety Circuits"}
 	if len(groups) != len(wantTitles) {
@@ -23,7 +23,7 @@ func TestGroupBySubsystem_ReturnsExpectedSubsystems(t *testing.T) {
 
 func TestGroupBySubsystem_CorrectRuleCountsPerSubsystem(t *testing.T) {
 	results := allPassResults()
-	groups := GroupBySubsystem(results)
+	groups := GroupBySubsystem(rows(results))
 
 	wantCounts := map[string]int{
 		"Motor":          4,
@@ -53,7 +53,7 @@ func TestGroupBySubsystem_IgnoresUnknownRuleIDs(t *testing.T) {
 		{RuleID: "ASME-001", Status: StatusPass},
 		{RuleID: "ASME-999", Status: StatusPass}, // not in any subsystem
 	}
-	groups := GroupBySubsystem(results)
+	groups := GroupBySubsystem(rows(results))
 	for _, g := range groups {
 		for _, r := range g.Results {
 			if r.RuleID == "ASME-999" {
@@ -65,7 +65,7 @@ func TestGroupBySubsystem_IgnoresUnknownRuleIDs(t *testing.T) {
 
 func TestGroupBySubsystem_PreservesRuleOrder(t *testing.T) {
 	results := allPassResults()
-	groups := GroupBySubsystem(results)
+	groups := GroupBySubsystem(rows(results))
 
 	// Motor group should be ASME-001 … ASME-004 in order.
 	motor := groups[0]
@@ -118,6 +118,14 @@ func TestPhotosByRule_PreservesPhotoOrder(t *testing.T) {
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
+
+func rows(results []RuleResult) []Row {
+	out := make([]Row, len(results))
+	for i, r := range results {
+		out[i] = Row{RuleResult: r, Effective: r.Status}
+	}
+	return out
+}
 
 func allPassResults() []RuleResult {
 	allIDs := []string{

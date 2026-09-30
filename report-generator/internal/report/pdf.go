@@ -9,11 +9,11 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
-// PDFRenderer converts an inspection Request into a PDF byte slice.
+// PDFRenderer converts a resolved Inspection into a PDF byte slice.
 // Abstracting behind an interface keeps the HTTP handler testable without
 // requiring a live Chrome installation.
 type PDFRenderer interface {
-	Render(ctx context.Context, req Request) ([]byte, error)
+	Render(ctx context.Context, in Inspection) ([]byte, error)
 }
 
 // ChromePDFRenderer renders PDFs using a headless Chrome instance via chromedp.
@@ -21,8 +21,8 @@ type PDFRenderer interface {
 type ChromePDFRenderer struct{}
 
 // Render renders the report HTML to PDF via chromedp.
-func (r *ChromePDFRenderer) Render(ctx context.Context, req Request) ([]byte, error) {
-	html, err := RenderHTML(req)
+func (r *ChromePDFRenderer) Render(ctx context.Context, in Inspection) ([]byte, error) {
+	html, err := RenderHTML(in)
 	if err != nil {
 		return nil, fmt.Errorf("render html: %w", err)
 	}

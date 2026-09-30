@@ -4,7 +4,8 @@ import { ScanScreen } from '../screens/ScanScreen';
 import { ComplianceScreen } from '../screens/ComplianceScreen';
 import { SummaryScreen } from '../screens/SummaryScreen';
 import { SignatureScreen } from '../screens/SignatureScreen';
-import type { ComplianceSummary, RuleResult } from '../types/compliance';
+import type { RuleResult } from '../types/compliance';
+import type { Overrides } from '../utils/inspectionOutcome';
 import type { CapturedPhoto } from '../store/photos';
 
 export type RootStackParamList = {
@@ -12,17 +13,19 @@ export type RootStackParamList = {
   Compliance: { unitTag: string };
   Summary: {
     unitTag: string;
-    summary: ComplianceSummary;
     asOf: string;
+    /** Telemetry results as returned by the compliance engine. */
     results: RuleResult[];
+    overrides: Overrides;
     photos: CapturedPhoto[];
     technician: string;
   };
   Signature: {
     unitTag: string;
-    summary: ComplianceSummary;
     asOf: string;
+    /** Telemetry results as returned by the compliance engine. */
     results: RuleResult[];
+    overrides: Overrides;
     photos: CapturedPhoto[];
     technician: string;
   };

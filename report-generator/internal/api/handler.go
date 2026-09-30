@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -12,7 +13,7 @@ import (
 
 // PDFRenderer is satisfied by report.ChromePDFRenderer and by test fakes.
 type PDFRenderer interface {
-	Render(ctx context.Context, req report.Request) ([]byte, error)
+	Render(ctx context.Context, in report.Inspection) ([]byte, error)
 }
 
 // Handler serves the report generation HTTP API.
@@ -41,23 +42,26 @@ func (h *Handler) generateReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.UnitTag == "" {
-		writeJSON(w, http.StatusBadRequest, errBody("unit_tag is required"))
-		return
-	}
-	if len(req.Results) == 0 {
-		writeJSON(w, http.StatusBadRequest, errBody("results must not be empty"))
-		return
-	}
-
-	pdfBytes, err := h.renderer.Render(r.Context(), req)
+	inspection, err := report.Resolve(req)
 	if err != nil {
-		h.log.Error("pdf render failed", "unit", req.UnitTag, "err", err)
+		var verr *report.ValidationError
+		if errors.As(err, &verr) {
+			writeJSON(w, http.StatusBadRequest, errBody(verr.Error()))
+			return
+		}
+		h.log.Error("resolve inspection failed", "unit", req.UnitTag, "err", err)
 		writeJSON(w, http.StatusInternalServerError, errBody("failed to generate report"))
 		return
 	}
 
-	filename := fmt.Sprintf("liftiq-report-%s.pdf", req.UnitTag)
+	pdfBytes, err := h.renderer.Render(r.Context(), inspection)
+	if err != nil {
+		h.log.Error("pdf render failed", "unit", inspection.UnitTag, "err", err)
+		writeJSON(w, http.StatusInternalServerError, errBody("failed to generate report"))
+		return
+	}
+
+	filename := fmt.Sprintf("liftiq-report-%s.pdf", inspection.UnitTag)
 	w.Header().Set("Content-Type", "application/pdf")
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
 	w.WriteHeader(http.StatusOK)

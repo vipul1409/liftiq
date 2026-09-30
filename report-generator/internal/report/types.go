@@ -11,7 +11,8 @@ const (
 	StatusUnknown Status = "unknown"
 )
 
-// RuleResult is one evaluated ASME A17.1 rule included in the report.
+// RuleResult is one ASME A17.1 rule as evaluated from telemetry by the
+// compliance engine. It is evidence: Resolve never modifies it.
 type RuleResult struct {
 	RuleID      string  `json:"rule_id"`
 	Description string  `json:"description"`
@@ -22,8 +23,6 @@ type RuleResult struct {
 	Unit        string  `json:"unit"`
 	Status      Status  `json:"status"`
 	Message     string  `json:"message"`
-	// Overridden is true when the technician manually overrode the telemetry result.
-	Overridden bool `json:"overridden"`
 }
 
 // Summary is the aggregate pass/fail/unknown count across all rules.
@@ -44,14 +43,19 @@ type Photo struct {
 }
 
 // Request is the JSON body for POST /reports.
+//
+// Results carry the telemetry status exactly as the compliance engine returned
+// it. Overrides maps rule ID → the technician's manual call ("pass" or "fail").
+// The report's effective statuses and summary are derived by Resolve; clients
+// do not send a summary.
 type Request struct {
-	UnitTag          string       `json:"unit_tag"`
-	InspectedAt      time.Time    `json:"inspected_at"`
-	Technician       string       `json:"technician"`
-	Results          []RuleResult `json:"results"`
-	Summary          Summary      `json:"summary"`
-	Photos           []Photo      `json:"photos"`
-	SignatureDataURI string       `json:"signature_data_uri,omitempty"` // "data:image/svg+xml;base64,..."
+	UnitTag          string            `json:"unit_tag"`
+	InspectedAt      time.Time         `json:"inspected_at"`
+	Technician       string            `json:"technician"`
+	Results          []RuleResult      `json:"results"`
+	Overrides        map[string]Status `json:"overrides"`
+	Photos           []Photo           `json:"photos"`
+	SignatureDataURI string            `json:"signature_data_uri,omitempty"` // "data:image/svg+xml;base64,..."
 }
 
 // subsystemOrder defines the display order of rule subsystems in the report.
@@ -67,22 +71,22 @@ var subsystemOrder = []struct {
 	{"Safety Circuits", []string{"ASME-016", "ASME-017", "ASME-018", "ASME-019", "ASME-020"}},
 }
 
-// SubsystemGroup groups rule results under a subsystem heading.
+// SubsystemGroup groups report rows under a subsystem heading.
 type SubsystemGroup struct {
 	Title   string
-	Results []RuleResult
+	Results []Row
 }
 
-// GroupBySubsystem organises results into subsystem groups matching
+// GroupBySubsystem organises rows into subsystem groups matching
 // the order used in the compliance checklist.
-func GroupBySubsystem(results []RuleResult) []SubsystemGroup {
-	byID := make(map[string]RuleResult, len(results))
-	for _, r := range results {
+func GroupBySubsystem(rows []Row) []SubsystemGroup {
+	byID := make(map[string]Row, len(rows))
+	for _, r := range rows {
 		byID[r.RuleID] = r
 	}
 	var groups []SubsystemGroup
 	for _, sub := range subsystemOrder {
-		var grouped []RuleResult
+		var grouped []Row
 		for _, id := range sub.RuleIDs {
 			if r, ok := byID[id]; ok {
 				grouped = append(grouped, r)
