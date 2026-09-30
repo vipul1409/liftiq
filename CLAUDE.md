@@ -747,3 +747,19 @@ Falls back gracefully on browsers without `SpeechRecognition` (e.g. Firefox).
 | — | — | Web demo app (laptop-friendly e2e) | Complete |
 | Phase 3 | 9–14 | Real BMS / BACnet integration | Not started |
 | Phase 4 | 12–16 | OEM RAG knowledge base | Not started |
+
+---
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues on `vipul1409/liftiq`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
