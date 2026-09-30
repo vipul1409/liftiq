@@ -1,12 +1,14 @@
-import type { RuleStatus } from './compliance';
+import type { Comparison, RuleStatus } from './compliance';
 
 export interface ReportRuleResult {
   rule_id: string;
   description: string;
   asme_ref: string;
+  subsystem: string;
   metric: string;
   value: number;
   threshold: number;
+  comparison: Comparison;
   unit: string;
   status: RuleStatus;
   message: string;

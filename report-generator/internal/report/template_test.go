@@ -220,6 +220,22 @@ func TestRenderHTML_OverriddenRowShowsTechnicianAndTelemetryStatus(t *testing.T)
 	}
 }
 
+func TestRenderHTML_LimitShowsComparison(t *testing.T) {
+	req := baseRequest()
+	req.Results[0].Comparison, req.Results[0].Threshold, req.Results[0].Unit = "at_most", 135, "N"
+	req.Results[1].Comparison, req.Results[1].Threshold, req.Results[1].Unit = "below", 500000, "trips"
+	req.Results[2].Comparison, req.Results[2].Threshold, req.Results[2].Unit = "equals", 1, "bool"
+	html, err := render(req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	for _, want := range []string{"<td>≤ 135 N</td>", "<td>&lt; 500000 trips</td>", "<td>= OK</td>"} {
+		if !strings.Contains(html, want) {
+			t.Errorf("rendered HTML missing limit cell %s", want)
+		}
+	}
+}
+
 func TestRenderHTML_UnknownValueRendersDash(t *testing.T) {
 	req := baseRequest()
 	for i := range req.Results {
