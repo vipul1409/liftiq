@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS elevator_units (
 --    At 20 metrics × 3 elevators × 5-second polls:
 --      ~720 rows/minute, ~1,037,000 rows/day.
 --
---    quality values: "good" | "stale" | "missing"
+--    quality values: "good" | "missing" (staleness is handled by the
+--    compliance engine's stale window, not stored as a quality)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS telemetry (
     time    TIMESTAMPTZ      NOT NULL,

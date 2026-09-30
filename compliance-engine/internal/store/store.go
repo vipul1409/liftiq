@@ -15,8 +15,15 @@ type MetricReading struct {
 	Metric  string
 	Value   float64
 	Time    time.Time
-	Quality string // "good" | "stale" | "missing"; only "good" values are real readings
+	Quality string // QualityGood or QualityMissing; only QualityGood values are real readings
 }
+
+// Metric quality values, as written by the telemetry-ingestor. Staleness is
+// not a quality: FetchLatest's window already leaves out old readings.
+const (
+	QualityGood    = "good"
+	QualityMissing = "missing"
+)
 
 // Store is the read-only interface the compliance engine uses to pull telemetry
 // from TimescaleDB. Tests replace it with an in-process fake.

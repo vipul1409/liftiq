@@ -443,7 +443,7 @@ CREATE TABLE telemetry (
     unit_id UUID             NOT NULL REFERENCES elevator_units(id),
     metric  VARCHAR(50)      NOT NULL,
     value   DOUBLE PRECISION NOT NULL,
-    quality VARCHAR(10)      NOT NULL DEFAULT 'good'   -- 'good' | 'stale' | 'missing'
+    quality VARCHAR(10)      NOT NULL DEFAULT 'good'   -- 'good' | 'missing'
 );
 ```
 
