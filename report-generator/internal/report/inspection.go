@@ -39,8 +39,9 @@ func invalid(format string, args ...any) error {
 }
 
 // Resolve applies the technician's overrides to the telemetry results and
-// derives the summary. Every override must name a rule present in Results and
-// be "pass" or "fail"; otherwise Resolve returns a *ValidationError.
+// derives the summary. Every override must name a rule present in Results, be
+// "pass" or "fail", and have been made against that rule's current result
+// status; otherwise Resolve returns a *ValidationError.
 func Resolve(req Request) (Inspection, error) {
 	if req.UnitTag == "" {
 		return Inspection{}, invalid("unit_tag is required")
@@ -49,24 +50,31 @@ func Resolve(req Request) (Inspection, error) {
 		return Inspection{}, invalid("results must not be empty")
 	}
 
-	known := make(map[string]bool, len(req.Results))
+	current := make(map[string]Status, len(req.Results))
 	for _, r := range req.Results {
-		known[r.RuleID] = true
+		current[r.RuleID] = r.Status
 	}
-	for id, s := range req.Overrides {
-		if !known[id] {
+	for id, o := range req.Overrides {
+		status, known := current[id]
+		if !known {
 			return Inspection{}, invalid("override for unknown rule %q", id)
 		}
-		if s != StatusPass && s != StatusFail {
-			return Inspection{}, invalid("override for %s must be \"pass\" or \"fail\", got %q", id, s)
+		if o.Status != StatusPass && o.Status != StatusFail {
+			return Inspection{}, invalid("override for %s must be \"pass\" or \"fail\", got %q", id, o.Status)
+		}
+		// An Override counts only against the evidence it was made on. If the
+		// Rule result has since changed, the technician must re-confirm it
+		// before signing (ADR 0002, issue #1).
+		if o.Against != status {
+			return Inspection{}, invalid("override for %s was made against result %q but the result is now %q; re-confirm it before signing", id, o.Against, status)
 		}
 	}
 
 	rows := make([]Row, len(req.Results))
 	for i, r := range req.Results {
 		row := Row{RuleResult: r, Effective: r.Status}
-		if s, ok := req.Overrides[r.RuleID]; ok {
-			row.Effective = s
+		if o, ok := req.Overrides[r.RuleID]; ok {
+			row.Effective = o.Status
 			row.Overridden = true
 		}
 		rows[i] = row

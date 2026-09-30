@@ -6,7 +6,7 @@ import { VoiceBar } from '../components/VoiceBar';
 import { KnowledgePanel } from '../components/KnowledgePanel';
 import { useCompliance } from '../hooks/useCompliance';
 import { useInspection } from '../context/InspectionContext';
-import { effectiveStatus } from '../hooks/useOverrides';
+import { effectiveStatus } from '../utils/overrides';
 import { fileToDataURI } from '../hooks/usePhotos';
 import { useVoice } from '../hooks/useVoice';
 import type { VoiceIntent } from '../utils/intentParser';
@@ -55,7 +55,7 @@ export function ComplianceScreen() {
     advancedByVoice.current = false;
     const rule = flatRules.find((r) => r.rule_id === activeRuleId);
     if (!rule) return;
-    const status = effectiveStatus(rule.status, inspection.overrides.get(rule.rule_id));
+    const status = effectiveStatus(rule.status, inspection.overrides[rule.rule_id]);
     setReadText(`${rule.rule_id}: ${rule.description}. Status: ${status}.`);
   }, [activeRuleId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -106,6 +106,7 @@ export function ComplianceScreen() {
   });
 
   const summary = inspection.getEffectiveSummary();
+  const reviewCount = inspection.getOverridesNeedingReview().length;
 
   if (loading) {
     return (
@@ -168,9 +169,10 @@ export function ComplianceScreen() {
                 {i > 0 && <div className="h-px bg-gray-100 ml-4" />}
                 <RuleRow
                   result={rule}
-                  override={inspection.overrides.get(rule.rule_id)}
+                  override={inspection.overrides[rule.rule_id]}
                   onOverride={inspection.setOverride}
                   onClearOverride={inspection.clearOverride}
+                  onConfirmOverride={inspection.confirmOverride}
                   isActive={rule.rule_id === activeRuleId}
                   photos={inspection.getPhotos(rule.rule_id)}
                   onAddPhoto={inspection.addPhoto}
@@ -223,10 +225,16 @@ export function ComplianceScreen() {
             <span className="text-red-600 font-bold">{summary.fail} fail</span>
             {'  '}
             <span className="text-gray-400 font-semibold">{summary.unknown} unknown</span>
+            {reviewCount > 0 && (
+              <p className="text-amber-700 font-bold text-xs mt-0.5">
+                {reviewCount} override{reviewCount === 1 ? ' needs' : 's need'} review
+              </p>
+            )}
           </div>
           <button
             onClick={() => navigate('/summary')}
-            className="flex items-center gap-2 bg-blue-800 text-white px-4 py-2.5 rounded-lg font-bold text-sm hover:bg-blue-900 transition-colors"
+            disabled={reviewCount > 0}
+            className="flex items-center gap-2 bg-blue-800 text-white px-4 py-2.5 rounded-lg font-bold text-sm hover:bg-blue-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <StatusBadge status={summary.overall} />
             <span>View Summary</span>

@@ -172,7 +172,7 @@ func TestGenerateReport_PassesResultsToRenderer(t *testing.T) {
 func TestGenerateReport_OverrideFailReachesRendererSummary(t *testing.T) {
 	fake := &fakePDFRenderer{}
 	req := validRequest()
-	req.Overrides = map[string]report.Status{"ASME-001": report.StatusFail}
+	req.Overrides = map[string]report.Override{"ASME-001": {Status: report.StatusFail, Against: report.StatusPass}}
 	rr := post(t, newHandler(fake), req)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rr.Code)
@@ -234,7 +234,7 @@ func TestGenerateReport_Returns400WhenResultsEmpty(t *testing.T) {
 func TestGenerateReport_Returns400WhenOverrideNamesUnknownRule(t *testing.T) {
 	fake := &fakePDFRenderer{}
 	req := validRequest()
-	req.Overrides = map[string]report.Status{"ASME-999": report.StatusPass}
+	req.Overrides = map[string]report.Override{"ASME-999": {Status: report.StatusPass, Against: report.StatusPass}}
 	rr := post(t, newHandler(fake), req)
 	if rr.Code != http.StatusBadRequest {
 		t.Errorf("status = %d, want 400", rr.Code)
@@ -246,10 +246,23 @@ func TestGenerateReport_Returns400WhenOverrideNamesUnknownRule(t *testing.T) {
 
 func TestGenerateReport_Returns400WhenOverrideStatusInvalid(t *testing.T) {
 	req := validRequest()
-	req.Overrides = map[string]report.Status{"ASME-001": report.StatusUnknown}
+	req.Overrides = map[string]report.Override{"ASME-001": {Status: report.StatusUnknown, Against: report.StatusPass}}
 	rr := post(t, newHandler(&fakePDFRenderer{}), req)
 	if rr.Code != http.StatusBadRequest {
 		t.Errorf("status = %d, want 400", rr.Code)
+	}
+}
+
+func TestGenerateReport_Returns400WhenOverrideMadeAgainstDifferentResult(t *testing.T) {
+	fake := &fakePDFRenderer{}
+	req := validRequest() // ASME-001 telemetry is pass
+	req.Overrides = map[string]report.Override{"ASME-001": {Status: report.StatusFail, Against: report.StatusUnknown}}
+	rr := post(t, newHandler(fake), req)
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400", rr.Code)
+	}
+	if fake.called {
+		t.Error("renderer called for an override that needs re-confirmation")
 	}
 }
 

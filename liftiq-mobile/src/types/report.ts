@@ -14,8 +14,12 @@ export interface ReportRuleResult {
   message: string;
 }
 
-/** Technician's manual call on a rule; the report-generator applies it. */
-export type ReportOverride = 'pass' | 'fail';
+/** Technician's call on a rule and the result status it was made against. */
+export interface ReportOverride {
+  status: 'pass' | 'fail';
+  /** Rejected by the report-generator unless it equals the submitted result's status. */
+  against: RuleStatus;
+}
 
 export interface ReportPhoto {
   rule_id: string;
@@ -31,7 +35,7 @@ export interface ReportRequest {
   technician: string;
   /** Telemetry results exactly as the compliance engine returned them. */
   results: ReportRuleResult[];
-  /** rule_id → technician override. The server derives effective status + summary. */
+  /** rule_id → Override. The server derives effective status + summary. */
   overrides: Record<string, ReportOverride>;
   photos: ReportPhoto[];
   signature_data_uri?: string;  // "data:image/svg+xml;base64,..."

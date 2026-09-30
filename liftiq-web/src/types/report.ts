@@ -14,8 +14,12 @@ export interface ReportRuleResult {
   message: string;
 }
 
-/** Technician's manual call on a rule; the report-generator applies it. */
-export type ReportOverride = 'pass' | 'fail';
+/** Technician's call on a rule and the result status it was made against. */
+export interface ReportOverride {
+  status: 'pass' | 'fail';
+  /** Rejected by the report-generator unless it equals the submitted result's status. */
+  against: RuleStatus;
+}
 
 export interface ReportPhoto {
   rule_id: string;

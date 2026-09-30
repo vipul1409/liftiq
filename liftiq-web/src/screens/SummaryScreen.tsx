@@ -18,6 +18,7 @@ export function SummaryScreen() {
   const navigate = useNavigate();
   const inspection = useInspection();
   const summary = inspection.getEffectiveSummary();
+  const reviewCount = inspection.getOverridesNeedingReview().length;
   const allPhotos = inspection.getAllPhotos();
 
   if (!inspection.complianceData || !inspection.unitTag) {
@@ -70,9 +71,15 @@ export function SummaryScreen() {
 
       {/* Actions */}
       <div className="px-6 pb-8 max-w-lg mx-auto w-full space-y-3">
+        {reviewCount > 0 && (
+          <p className="text-center text-sm font-semibold text-amber-700">
+            {reviewCount} override{reviewCount === 1 ? ' needs' : 's need'} review before signing
+          </p>
+        )}
         <button
           onClick={() => navigate('/sign')}
-          className="w-full py-4 bg-blue-600 text-white font-bold text-base rounded-xl hover:bg-blue-700 transition-colors"
+          disabled={reviewCount > 0}
+          className="w-full py-4 bg-blue-600 text-white font-bold text-base rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Proceed to Sign
         </button>

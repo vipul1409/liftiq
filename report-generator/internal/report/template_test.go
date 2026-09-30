@@ -142,7 +142,7 @@ func TestRenderHTML_FailBannerWhenFailed(t *testing.T) {
 
 func TestRenderHTML_FailBannerWhenOverriddenToFail(t *testing.T) {
 	req := baseRequest()
-	req.Overrides = map[string]Status{"ASME-006": StatusFail}
+	req.Overrides = map[string]Override{"ASME-006": {Status: StatusFail, Against: StatusPass}}
 	html, err := render(req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -193,7 +193,7 @@ func TestRenderHTML_FailRowHighlightedForFailedRule(t *testing.T) {
 
 func TestRenderHTML_OverrideTagShownWhenOverridden(t *testing.T) {
 	req := baseRequest()
-	req.Overrides = map[string]Status{"ASME-001": StatusFail}
+	req.Overrides = map[string]Override{"ASME-001": {Status: StatusFail, Against: StatusPass}}
 	html, err := render(req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -207,7 +207,7 @@ func TestRenderHTML_OverriddenRowShowsTechnicianAndTelemetryStatus(t *testing.T)
 	req := baseRequest()
 	req.Results[0].Status = StatusFail
 	req.Results[0].Message = "Motor current exceeds operational limit"
-	req.Overrides = map[string]Status{"ASME-001": StatusPass}
+	req.Overrides = map[string]Override{"ASME-001": {Status: StatusPass, Against: StatusFail}}
 	html, err := render(req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

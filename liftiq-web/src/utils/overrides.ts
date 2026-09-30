@@ -1,4 +1,3 @@
-import { useState, useCallback } from 'react';
 import type { RuleResult, RuleStatus } from '../types/compliance';
 
 export type OverrideStatus = 'pass' | 'fail';
@@ -54,43 +53,4 @@ export function overridesNeedingReview(overrides: Overrides, results: RuleResult
   return results
     .filter((r) => overrides[r.rule_id] && needsReview(overrides[r.rule_id], r.status))
     .map((r) => r.rule_id);
-}
-
-interface UseOverridesResult {
-  overrides: Overrides;
-  /** Record a call against the rule's current result status. Also re-confirms. */
-  setOverride: (ruleId: string, status: OverrideStatus, against: RuleStatus) => void;
-  clearOverride: (ruleId: string) => void;
-  /** Apply reconcileOverrides for a new Compliance snapshot. */
-  reconcile: (results: RuleResult[]) => void;
-  clearAll: () => void;
-}
-
-export function useOverrides(): UseOverridesResult {
-  const [overrides, setOverrides] = useState<Overrides>({});
-
-  const setOverride = useCallback(
-    (ruleId: string, status: OverrideStatus, against: RuleStatus) => {
-      setOverrides((prev) => ({ ...prev, [ruleId]: { status, against } }));
-    },
-    [],
-  );
-
-  const clearOverride = useCallback((ruleId: string) => {
-    setOverrides((prev) => {
-      const next = { ...prev };
-      delete next[ruleId];
-      return next;
-    });
-  }, []);
-
-  const reconcile = useCallback((results: RuleResult[]) => {
-    setOverrides((prev) => reconcileOverrides(prev, results));
-  }, []);
-
-  const clearAll = useCallback(() => {
-    setOverrides({});
-  }, []);
-
-  return { overrides, setOverride, clearOverride, reconcile, clearAll };
 }

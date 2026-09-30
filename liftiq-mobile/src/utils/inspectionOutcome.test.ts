@@ -27,19 +27,27 @@ describe('applyOverrides + summarise', () => {
   });
 
   it('counts a technician fail and makes the inspection fail', () => {
-    expect(summarise(applyOverrides(telemetry, { 'ASME-006': 'fail' }))).toEqual({
+    expect(summarise(applyOverrides(telemetry, { 'ASME-006': { status: 'fail', against: 'pass' } }))).toEqual({
       pass: 1, fail: 1, unknown: 1, overall: 'fail',
     });
   });
 
   it('lets a technician resolve an unknown', () => {
-    expect(summarise(applyOverrides(telemetry, { 'ASME-014': 'pass' }))).toEqual({
+    expect(summarise(applyOverrides(telemetry, { 'ASME-014': { status: 'pass', against: 'unknown' } }))).toEqual({
       pass: 3, fail: 0, unknown: 0, overall: 'pass',
     });
   });
 
+  it('ignores an Override whose Rule result changed to disagree with it', () => {
+    // ASME-001 was passed while unknown; telemetry now says pass → agrees; but
+    // an Override of fail made while unknown, now pass, needs review.
+    expect(summarise(applyOverrides(telemetry, { 'ASME-001': { status: 'fail', against: 'unknown' } }))).toEqual({
+      pass: 2, fail: 0, unknown: 1, overall: 'unknown',
+    });
+  });
+
   it('does not mutate the telemetry results', () => {
-    applyOverrides(telemetry, { 'ASME-001': 'fail' });
+    applyOverrides(telemetry, { 'ASME-001': { status: 'fail', against: 'pass' } });
     expect(telemetry[0].status).toBe('pass');
   });
 });
@@ -50,13 +58,13 @@ describe('buildReportRequest', () => {
     inspectedAt: '2026-09-29T12:00:00Z',
     technician: 'Inspector',
     results: telemetry,
-    overrides: { 'ASME-006': 'fail' },
+    overrides: { 'ASME-006': { status: 'fail', against: 'pass' } },
     photos: [],
     signatureDataURI: 'data:image/svg+xml;base64,xx',
   });
 
-  it('sends the technician overrides', () => {
-    expect(req.overrides).toEqual({ 'ASME-006': 'fail' });
+  it('sends each Override with the result it was made against', () => {
+    expect(req.overrides).toEqual({ 'ASME-006': { status: 'fail', against: 'pass' } });
   });
 
   it('sends telemetry status, not the overridden status', () => {

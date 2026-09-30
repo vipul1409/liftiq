@@ -41,7 +41,8 @@ liftiq/
 │       ├── App.tsx                        ← routes: / → Scan, /inspect/:tag, /summary, /sign
 │       ├── api/                           ← fetch wrappers (compliance, report)
 │       ├── context/InspectionContext.tsx   ← cross-screen session state
-│       ├── hooks/                         ← useUnits, useCompliance, useOverrides, usePhotos, useVoice
+│       ├── hooks/                         ← useUnits, useCompliance, usePhotos, useVoice
+│       ├── utils/                         ← overrides (re-confirmation logic), groupBySubsystem, intentParser
 │       ├── components/                    ← StatusBadge, RuleRow, PhotoStrip, VoiceBar, SignatureCanvas
 │       └── screens/                       ← ScanScreen, ComplianceScreen, SummaryScreen, SignatureScreen
 ├── elevator-simulator/                    ← Phase 1 Week 1 deliverable
@@ -729,6 +730,7 @@ Falls back gracefully on browsers without `SpeechRecognition` (e.g. Firefox).
 | `make build` | TypeScript check + production build |
 | `make preview` | Serve production build locally |
 | `make typecheck` | Run `tsc --noEmit` |
+| `make test` | Run Vitest unit tests |
 
 ---
 

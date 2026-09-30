@@ -1,18 +1,19 @@
 import type { ComplianceSummary, RuleResult } from '../types/compliance';
-import type { ReportOverride, ReportPhoto, ReportRequest } from '../types/report';
+import type { ReportPhoto, ReportRequest } from '../types/report';
+import { effectiveStatus, type Overrides } from '../store/overrides';
 
-/** rule_id → technician override. Plain object so it survives navigation params. */
-export type Overrides = Record<string, ReportOverride>;
+export type { Overrides } from '../store/overrides';
 
 /**
- * Returns results with each overridden rule's status replaced by the
- * technician's call. For on-screen display only — the report-generator
- * re-derives this authoritatively from the raw results + overrides.
+ * Returns results with each rule's status replaced by its Effective status:
+ * the technician's call, unless that Override needs re-confirmation. For
+ * on-screen display only — the report-generator re-derives this
+ * authoritatively from the raw results + overrides.
  */
 export function applyOverrides(results: RuleResult[], overrides: Overrides): RuleResult[] {
   return results.map((r) => {
-    const override = overrides[r.rule_id];
-    return override ? { ...r, status: override } : r;
+    const status = effectiveStatus(r.status, overrides[r.rule_id]);
+    return status === r.status ? r : { ...r, status };
   });
 }
 

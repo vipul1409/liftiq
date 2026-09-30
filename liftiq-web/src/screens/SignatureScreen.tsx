@@ -23,9 +23,11 @@ export function SignatureScreen() {
   const { unitTag, complianceData, technician } = inspection;
   const asOf = complianceData.as_of;
   const allPhotos = inspection.getAllPhotos();
+  // Signing is blocked while any Override needs re-confirmation (issue #1).
+  const reviewPending = inspection.getOverridesNeedingReview().length > 0;
 
   async function handleSignAndGenerate() {
-    if (!hasStrokes) return;
+    if (!hasStrokes || reviewPending) return;
     setGenerating(true);
     setErrorMsg('');
 
@@ -59,7 +61,7 @@ export function SignatureScreen() {
         inspected_at: asOf,
         technician,
         results: reportResults,
-        overrides: Object.fromEntries(inspection.overrides),
+        overrides: inspection.overrides,
         photos: reportPhotos,
         signature_data_uri: signatureDataURI,
       };
@@ -122,9 +124,9 @@ export function SignatureScreen() {
         </button>
         <button
           onClick={handleSignAndGenerate}
-          disabled={!hasStrokes || generating}
+          disabled={!hasStrokes || generating || reviewPending}
           className={`flex-[2] py-4 text-white font-bold rounded-xl transition-colors ${
-            !hasStrokes || generating
+            !hasStrokes || generating || reviewPending
               ? 'bg-blue-300 cursor-not-allowed'
               : 'bg-blue-600 hover:bg-blue-700'
           }`}
