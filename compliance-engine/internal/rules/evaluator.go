@@ -22,7 +22,7 @@ func EvaluateAll(values MetricValues) []Result {
 				Comparison:  rule.Comparison,
 				Subsystem:   rule.Subsystem,
 				Status:      Unknown,
-				Message:     "no recent telemetry data for this metric",
+				Message:     "no current telemetry reading for this metric (stale or missing)",
 			})
 			continue
 		}

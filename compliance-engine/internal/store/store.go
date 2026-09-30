@@ -12,9 +12,10 @@ var ErrUnitNotFound = errors.New("unit not found")
 
 // MetricReading is one metric value captured at a specific point in time.
 type MetricReading struct {
-	Metric string
-	Value  float64
-	Time   time.Time
+	Metric  string
+	Value   float64
+	Time    time.Time
+	Quality string // "good" | "stale" | "missing"; only "good" values are real readings
 }
 
 // Store is the read-only interface the compliance engine uses to pull telemetry
@@ -24,7 +25,8 @@ type Store interface {
 	ListUnits(ctx context.Context) ([]string, error)
 
 	// FetchLatest returns the most recent reading for each metric that has at
-	// least one row within [now-window, now] for the given unit.
+	// least one row within [now-window, now] for the given unit, whatever its
+	// quality — callers must not evaluate a reading whose Quality is not "good".
 	// Returns ErrUnitNotFound if the unit tag is not in elevator_units.
 	FetchLatest(ctx context.Context, unitTag string, window time.Duration) ([]MetricReading, error)
 }

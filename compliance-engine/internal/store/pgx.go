@@ -73,7 +73,7 @@ func (s *pgxStore) FetchLatest(ctx context.Context, unitTag string, window time.
 
 	// DISTINCT ON (metric) picks the row with the greatest time per metric.
 	rows, err := s.pool.Query(ctx, `
-		SELECT DISTINCT ON (metric) metric, value, time
+		SELECT DISTINCT ON (metric) metric, value, time, quality
 		FROM telemetry
 		WHERE unit_id = $1
 		  AND time > NOW() - $2::interval
@@ -87,7 +87,7 @@ func (s *pgxStore) FetchLatest(ctx context.Context, unitTag string, window time.
 	var readings []MetricReading
 	for rows.Next() {
 		var r MetricReading
-		if err := rows.Scan(&r.Metric, &r.Value, &r.Time); err != nil {
+		if err := rows.Scan(&r.Metric, &r.Value, &r.Time, &r.Quality); err != nil {
 			return nil, fmt.Errorf("scan telemetry row: %w", err)
 		}
 		readings = append(readings, r)

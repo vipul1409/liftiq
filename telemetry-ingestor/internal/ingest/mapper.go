@@ -17,6 +17,9 @@ import (
 //   - 15 float-valued sensor readings
 //   - 5 boolean safety-circuit fields (stored as 1.0 / 0.0)
 //
+// Fields absent or null in the decoded payload produce rows with Quality
+// "missing" instead of "good".
+//
 // Excluded fields: direction, door_status, max_floors, injected_fault.
 // These are operational/display metadata, not sensor readings.
 func MapSnapshot(snap simulator.ElevatorSnapshot, unitID uuid.UUID, at time.Time) []store.Row {
@@ -65,12 +68,19 @@ func MapSnapshot(snap simulator.ElevatorSnapshot, unitID uuid.UUID, at time.Time
 
 	rows := make([]store.Row, len(entries))
 	for i, e := range entries {
+		// A field absent or null in the simulator payload is recorded as
+		// "missing" (value 0) so the compliance engine reports Unknown rather
+		// than evaluating a fabricated zero.
+		quality := "good"
+		if snap.IsMissing(e.name) {
+			quality = "missing"
+		}
 		rows[i] = store.Row{
 			Time:    at,
 			UnitID:  unitID,
 			Metric:  e.name,
 			Value:   e.value,
-			Quality: "good",
+			Quality: quality,
 		}
 	}
 	return rows

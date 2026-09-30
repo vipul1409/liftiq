@@ -210,3 +210,40 @@ func TestFetchAll_AllNumericFieldsPresent(t *testing.T) {
 		}
 	}
 }
+
+func TestFetchAll_AbsentOrNullMetricIsMarkedMissing(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// door_close_force_n renamed upstream; brake_response_ms explicitly null.
+		_, _ = w.Write([]byte(`[{"unit_id":"ELV-003","door_close_force":118.0,"brake_response_ms":null,"motor_current_a":12.5}]`))
+	}))
+	defer srv.Close()
+
+	got, err := simulator.NewHTTPClient(srv.URL).FetchAll(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	snap := got[0]
+	for _, m := range []string{"door_close_force_n", "brake_response_ms"} {
+		if !snap.IsMissing(m) {
+			t.Errorf("%s: want missing", m)
+		}
+	}
+	if snap.IsMissing("motor_current_a") {
+		t.Error("motor_current_a: present in payload but reported missing")
+	}
+}
+
+func TestFetchAll_ZeroValueIsNotMissing(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`[{"unit_id":"ELV-001","safety_circuit_ok":false,"door_obstruction_events":0}]`))
+	}))
+	defer srv.Close()
+
+	got, err := simulator.NewHTTPClient(srv.URL).FetchAll(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got[0].IsMissing("safety_circuit_ok") || got[0].IsMissing("door_obstruction_events") {
+		t.Error("real zero/false readings reported missing")
+	}
+}

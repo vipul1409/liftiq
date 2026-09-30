@@ -1,6 +1,7 @@
 package ingest_test
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -243,5 +244,33 @@ func TestMapSnapshot_TwoSnapshotsProduceIndependentRows(t *testing.T) {
 	}
 	if rows1[0].Time.Equal(rows2[0].Time) {
 		t.Error("rows from different polls share the same timestamp")
+	}
+}
+
+func TestMapSnapshot_MissingFieldWrittenAsMissingNotGood(t *testing.T) {
+	var snap simulator.ElevatorSnapshot
+	// door_close_force_n absent (e.g. renamed upstream); everything else present.
+	payload := `{"unit_id":"ELV-003","motor_current_a":12.5,"motor_temp_c":50,"motor_rpm":1400,
+		"motor_run_hours":100,"trip_count":1,"door_cycle_count":1,"door_motor_amps":2,
+		"door_close_time_ms":3000,"door_obstruction_events":0,"brake_engagement_count":1,
+		"brake_current_a":1.5,"brake_response_ms":60,"leveling_accuracy_mm":4,"vibration_g":0.05,
+		"door_interlock_ok":true,"governor_ok":true,"buffer_ok":true,"pit_switch_ok":true,
+		"safety_circuit_ok":true}`
+	if err := json.Unmarshal([]byte(payload), &snap); err != nil {
+		t.Fatal(err)
+	}
+
+	rows := ingest.MapSnapshot(snap, uuid.New(), time.Now())
+	if len(rows) != 20 {
+		t.Fatalf("got %d rows, want 20", len(rows))
+	}
+	for _, r := range rows {
+		want := "good"
+		if r.Metric == "door_close_force_n" {
+			want = "missing"
+		}
+		if r.Quality != want {
+			t.Errorf("%s: quality %q, want %q", r.Metric, r.Quality, want)
+		}
 	}
 }
