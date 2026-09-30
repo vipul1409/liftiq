@@ -48,18 +48,32 @@ func TestGroupBySubsystem_EmptyInputReturnsNoGroups(t *testing.T) {
 	}
 }
 
-func TestGroupBySubsystem_IgnoresUnknownRuleIDs(t *testing.T) {
+func TestGroupBySubsystem_RuleWithoutSubsystemGoesToOtherLast(t *testing.T) {
 	results := []RuleResult{
-		{RuleID: "ASME-001", Status: StatusPass},
-		{RuleID: "ASME-999", Status: StatusPass}, // not in any subsystem
+		{RuleID: "ASME-001", Subsystem: "Motor", Status: StatusPass},
+		{RuleID: "ASME-021", Status: StatusPass}, // new rule, client sent no subsystem
+		{RuleID: "ASME-002", Subsystem: "Motor", Status: StatusPass},
 	}
 	groups := GroupBySubsystem(rows(results))
-	for _, g := range groups {
-		for _, r := range g.Results {
-			if r.RuleID == "ASME-999" {
-				t.Errorf("unexpected rule ASME-999 appeared in group %q", g.Title)
-			}
-		}
+	if len(groups) != 2 {
+		t.Fatalf("got %d groups, want 2", len(groups))
+	}
+	if groups[0].Title != "Motor" || len(groups[0].Results) != 2 {
+		t.Errorf("first group = %q with %d rules, want Motor with 2", groups[0].Title, len(groups[0].Results))
+	}
+	if groups[1].Title != "Other" || groups[1].Results[0].RuleID != "ASME-021" {
+		t.Errorf("last group = %q, want Other containing ASME-021", groups[1].Title)
+	}
+}
+
+func TestGroupBySubsystem_FollowsResultOrderNotAFixedList(t *testing.T) {
+	results := []RuleResult{
+		{RuleID: "ASME-030", Subsystem: "Escalator Steps"},
+		{RuleID: "ASME-001", Subsystem: "Motor"},
+	}
+	groups := GroupBySubsystem(rows(results))
+	if len(groups) != 2 || groups[0].Title != "Escalator Steps" || groups[1].Title != "Motor" {
+		t.Errorf("groups = %+v, want [Escalator Steps, Motor]", groups)
 	}
 }
 
@@ -128,26 +142,33 @@ func rows(results []RuleResult) []Row {
 }
 
 func allPassResults() []RuleResult {
-	allIDs := []string{
-		"ASME-001", "ASME-002", "ASME-003", "ASME-004",
-		"ASME-005",
-		"ASME-006", "ASME-007", "ASME-008", "ASME-009", "ASME-010",
-		"ASME-011", "ASME-012", "ASME-013",
-		"ASME-014", "ASME-015",
-		"ASME-016", "ASME-017", "ASME-018", "ASME-019", "ASME-020",
+	subsystems := []struct {
+		title string
+		ids   []string
+	}{
+		{"Motor", []string{"ASME-001", "ASME-002", "ASME-003", "ASME-004"}},
+		{"Trip / Usage", []string{"ASME-005"}},
+		{"Door Operator", []string{"ASME-006", "ASME-007", "ASME-008", "ASME-009", "ASME-010"}},
+		{"Brake System", []string{"ASME-011", "ASME-012", "ASME-013"}},
+		{"Ride Quality", []string{"ASME-014", "ASME-015"}},
+		{"Safety Circuits", []string{"ASME-016", "ASME-017", "ASME-018", "ASME-019", "ASME-020"}},
 	}
-	results := make([]RuleResult, len(allIDs))
-	for i, id := range allIDs {
-		results[i] = RuleResult{
-			RuleID:      id,
-			Description: "Test rule " + id,
-			ASMERef:     "ASME A17.1 2.1",
-			Metric:      "test_metric",
-			Value:       1.0,
-			Threshold:   100.0,
-			Unit:        "unit",
-			Status:      StatusPass,
-			Message:     "within limit",
+	var results []RuleResult
+	for _, sub := range subsystems {
+		for _, id := range sub.ids {
+			results = append(results, RuleResult{
+				RuleID:      id,
+				Description: "Test rule " + id,
+				ASMERef:     "ASME A17.1 2.1",
+				Subsystem:   sub.title,
+				Metric:      "test_metric",
+				Value:       1.0,
+				Threshold:   100.0,
+				Comparison:  "at_most",
+				Unit:        "unit",
+				Status:      StatusPass,
+				Message:     "within limit",
+			})
 		}
 	}
 	return results

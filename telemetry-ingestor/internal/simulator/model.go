@@ -1,5 +1,11 @@
 package simulator
 
+import (
+	"encoding/json"
+	"reflect"
+	"strings"
+)
+
 // ElevatorSnapshot mirrors the JSON shape of one item in GET /elevators.
 // Field names match the Python simulator's to_dict() output exactly.
 //
@@ -47,4 +53,38 @@ type ElevatorSnapshot struct {
 
 	// Simulator-only metadata — not stored as metrics
 	InjectedFault *string `json:"injected_fault"`
+
+	// missing holds the JSON keys that were absent or null in the payload.
+	// A renamed or dropped simulator field would otherwise decode as a zero
+	// value indistinguishable from a real 0 / false reading.
+	missing map[string]bool
+}
+
+// IsMissing reports whether the JSON field named key was absent or null in the
+// decoded payload. Snapshots built in code (not decoded) report nothing missing.
+func (s ElevatorSnapshot) IsMissing(key string) bool { return s.missing[key] }
+
+// UnmarshalJSON decodes the snapshot and records which tagged fields were
+// absent or null.
+func (s *ElevatorSnapshot) UnmarshalJSON(data []byte) error {
+	type plain ElevatorSnapshot // drops methods, avoiding recursion
+	if err := json.Unmarshal(data, (*plain)(s)); err != nil {
+		return err
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	s.missing = make(map[string]bool)
+	t := reflect.TypeOf(*s)
+	for i := 0; i < t.NumField(); i++ {
+		key, _, _ := strings.Cut(t.Field(i).Tag.Get("json"), ",")
+		if key == "" || key == "-" {
+			continue
+		}
+		if v, ok := raw[key]; !ok || string(v) == "null" {
+			s.missing[key] = true
+		}
+	}
+	return nil
 }

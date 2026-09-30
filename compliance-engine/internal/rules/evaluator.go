@@ -19,8 +19,10 @@ func EvaluateAll(values MetricValues) []Result {
 				Metric:      rule.Metric,
 				Threshold:   rule.Threshold,
 				Unit:        rule.Unit,
+				Comparison:  rule.Comparison,
+				Subsystem:   rule.Subsystem,
 				Status:      Unknown,
-				Message:     "no recent telemetry data for this metric",
+				Message:     "no current telemetry reading for this metric (stale or missing)",
 			})
 			continue
 		}

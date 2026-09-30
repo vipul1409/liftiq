@@ -1,0 +1,22 @@
+[
+  "motor_current_a",
+  "motor_temp_c",
+  "motor_rpm",
+  "motor_run_hours",
+  "trip_count",
+  "door_cycle_count",
+  "door_motor_amps",
+  "door_close_force_n",
+  "door_close_time_ms",
+  "door_obstruction_events",
+  "brake_engagement_count",
+  "brake_current_a",
+  "brake_response_ms",
+  "leveling_accuracy_mm",
+  "vibration_g",
+  "door_interlock_ok",
+  "governor_ok",
+  "buffer_ok",
+  "pit_switch_ok",
+  "safety_circuit_ok"
+]

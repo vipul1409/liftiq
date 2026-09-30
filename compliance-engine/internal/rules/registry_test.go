@@ -1,22 +1,28 @@
 package rules_test
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/liftiq/compliance-engine/internal/rules"
 )
 
-// knownMetrics is the authoritative set of 20 metrics produced by the
-// telemetry-ingestor's MapSnapshot function (ingest/mapper.go).
-var knownMetrics = []string{
-	"motor_current_a", "motor_temp_c", "motor_rpm", "motor_run_hours",
-	"trip_count",
-	"door_cycle_count", "door_motor_amps", "door_close_force_n",
-	"door_close_time_ms", "door_obstruction_events",
-	"brake_engagement_count", "brake_current_a", "brake_response_ms",
-	"leveling_accuracy_mm", "vibration_g",
-	"door_interlock_ok", "governor_ok", "buffer_ok", "pit_switch_ok", "safety_circuit_ok",
+// knownMetrics loads the telemetry metric contract shared with the simulator
+// and the telemetry-ingestor (contracts/telemetry-metrics.json).
+func knownMetrics(t *testing.T) []string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "telemetry-metrics.json"))
+	if err != nil {
+		t.Fatalf("read metric contract: %v", err)
+	}
+	var metrics []string
+	if err := json.Unmarshal(b, &metrics); err != nil {
+		t.Fatalf("decode metric contract: %v", err)
+	}
+	return metrics
 }
 
 func TestASME20_HasExactly20Rules(t *testing.T) {
@@ -68,7 +74,7 @@ func TestASME20_AllMetricsUnique(t *testing.T) {
 
 func TestASME20_AllMetricsMatchTelemetrySchema(t *testing.T) {
 	known := make(map[string]bool)
-	for _, m := range knownMetrics {
+	for _, m := range knownMetrics(t) {
 		known[m] = true
 	}
 	for _, r := range rules.ASME20 {
@@ -83,7 +89,7 @@ func TestASME20_AllTelemetryMetricsCovered(t *testing.T) {
 	for _, r := range rules.ASME20 {
 		covered[r.Metric] = true
 	}
-	for _, m := range knownMetrics {
+	for _, m := range knownMetrics(t) {
 		if !covered[m] {
 			t.Errorf("telemetry metric %q has no corresponding ASME rule", m)
 		}

@@ -14,6 +14,9 @@ liftiq/
 ├── DEMO-WEB.md                            ← web demo runbook (laptop-only, browser-based)
 ├── DEMO-MOBILE.md                         ← mobile demo runbook (React Native / Expo)
 ├── Makefile                               ← root orchestration (demo-up/down/status, fault injection)
+├── CONTEXT.md                             ← domain glossary (Inspection, Override, Rule catalogue…)
+├── docs/adr/                              ← architecture decision records — read before restructuring
+├── contracts/                             ← cross-language fixtures (telemetry metric names, simulator snapshot)
 ├── scripts/
 │   ├── demo-start.sh                      ← start all services with health checks
 │   ├── demo-stop.sh                       ← stop all services

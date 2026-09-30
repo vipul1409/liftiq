@@ -6,9 +6,11 @@ function rule(id: string, status: RuleStatus, value: number | null = 1): RuleRes
     rule_id: id,
     description: `Rule ${id}`,
     asme_ref: 'ASME A17.1',
+    subsystem: 'Motor',
     metric: 'm',
     value,
     threshold: 10,
+    comparison: 'at_most',
     unit: 'A',
     status,
     message: `${status} message`,
@@ -63,6 +65,10 @@ describe('buildReportRequest', () => {
 
   it('does not send a summary — the server derives it', () => {
     expect(req).not.toHaveProperty('summary');
+  });
+
+  it('forwards subsystem and comparison so the report can group and show limits', () => {
+    expect(req.results[0]).toMatchObject({ subsystem: 'Motor', comparison: 'at_most' });
   });
 
   it('carries unit, technician and signature', () => {

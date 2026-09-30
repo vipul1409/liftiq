@@ -19,39 +19,11 @@ import { useVoice } from '../hooks/useVoice';
 import { useCamera } from '../hooks/useCamera';
 import { effectiveStatus } from '../store/overrides';
 import { applyOverrides, summarise } from '../utils/inspectionOutcome';
+import { groupBySubsystem } from '../utils/groupBySubsystem';
 import type { RootStackParamList } from '../navigation/AppNavigator';
-import type { RuleResult } from '../types/compliance';
 import type { VoiceIntent } from '../types/voice';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Compliance'>;
-
-interface Section {
-  title: string;
-  data: RuleResult[];
-}
-
-const SUBSYSTEM_MAP: { title: string; prefix: string[] }[] = [
-  { title: 'Motor', prefix: ['ASME-001', 'ASME-002', 'ASME-003', 'ASME-004'] },
-  { title: 'Trip / Usage', prefix: ['ASME-005'] },
-  {
-    title: 'Door Operator',
-    prefix: ['ASME-006', 'ASME-007', 'ASME-008', 'ASME-009', 'ASME-010'],
-  },
-  { title: 'Brake System', prefix: ['ASME-011', 'ASME-012', 'ASME-013'] },
-  { title: 'Ride Quality', prefix: ['ASME-014', 'ASME-015'] },
-  {
-    title: 'Safety Circuits',
-    prefix: ['ASME-016', 'ASME-017', 'ASME-018', 'ASME-019', 'ASME-020'],
-  },
-];
-
-function groupResults(results: RuleResult[]): Section[] {
-  const byId = new Map(results.map((r) => [r.rule_id, r]));
-  return SUBSYSTEM_MAP.map(({ title, prefix }) => ({
-    title,
-    data: prefix.map((id) => byId.get(id)).filter((r): r is RuleResult => r !== undefined),
-  })).filter((s) => s.data.length > 0);
-}
 
 export function ComplianceScreen({ route, navigation }: Props) {
   const { unitTag } = route.params;
@@ -61,7 +33,7 @@ export function ComplianceScreen({ route, navigation }: Props) {
   const camera = useCamera();
 
   const sections = useMemo(
-    () => (data ? groupResults(data.results) : []),
+    () => (data ? groupBySubsystem(data.results) : []),
     [data],
   );
 

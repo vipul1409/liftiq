@@ -1,12 +1,18 @@
 export type RuleStatus = 'pass' | 'fail' | 'unknown';
 
+/** How value is checked against threshold: ≤, <, or = (boolean safety fields). */
+export type Comparison = 'at_most' | 'below' | 'equals';
+
 export interface RuleResult {
   rule_id: string;
   description: string;
   asme_ref: string;
+  /** Display group from the compliance engine's rule catalogue, e.g. "Door Operator". */
+  subsystem: string;
   metric: string;
   value: number | null;
   threshold: number;
+  comparison: Comparison;
   unit: string;
   status: RuleStatus;
   message: string;

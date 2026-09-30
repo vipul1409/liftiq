@@ -4,12 +4,36 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
+	"strconv"
 	"time"
 )
 
 // safeURL wraps a string as template.URL, bypassing Go's URL safety filter for
 // data: URIs used in img src attributes.
 func toTemplateURL(s string) template.URL { return template.URL(s) }
+
+// formatFloat prints v in shortest decimal form, never in exponent notation.
+func formatFloat(v float64) string {
+	return strconv.FormatFloat(v, 'f', -1, 64)
+}
+
+// formatLimit renders a rule's pass condition, e.g. "≤ 135 N", "< 500000 trips",
+// or "= OK" for boolean safety fields.
+func formatLimit(r Row) string {
+	switch r.Comparison {
+	case "equals":
+		if r.Threshold == 1 {
+			return "= OK"
+		}
+		return "= " + formatFloat(r.Threshold) + " " + r.Unit
+	case "below":
+		return "< " + formatFloat(r.Threshold) + " " + r.Unit
+	case "at_most":
+		return "≤ " + formatFloat(r.Threshold) + " " + r.Unit
+	default:
+		return formatFloat(r.Threshold) + " " + r.Unit
+	}
+}
 
 // templateData is the full data model passed to the HTML template.
 type templateData struct {
@@ -48,9 +72,8 @@ func RenderHTML(in Inspection) (string, error) {
 				return "N/A"
 			}
 		},
-		"formatFloat": func(v float64) string {
-			return fmt.Sprintf("%.4g", v)
-		},
+		"formatFloat": formatFloat,
+		"formatLimit": formatLimit,
 		"formatTime": func(t time.Time) string {
 			return t.UTC().Format("2006-01-02 15:04:05 UTC")
 		},
@@ -246,7 +269,7 @@ const reportHTML = `<!DOCTYPE html>
     </td>
     <td><span class="badge {{statusClass .Effective}}">{{statusLabel .Effective}}</span></td>
     <td>{{if eq .Status "unknown"}}—{{else}}{{formatFloat .Value}} {{.Unit}}{{end}}</td>
-    <td>{{formatFloat .Threshold}} {{.Unit}}</td>
+    <td>{{formatLimit .}}</td>
     <td class="rule-msg">{{if .Overridden}}<span class="override-tag">Technician: {{statusLabel .Effective}} · Telemetry: {{statusLabel .Status}}</span><br>{{end}}{{.Message}}</td>
   </tr>
   {{end}}

@@ -67,7 +67,7 @@ func allGoodReadings() []store.MetricReading {
 	now := time.Now().UTC()
 	out := make([]store.MetricReading, 0, len(vals))
 	for metric, value := range vals {
-		out = append(out, store.MetricReading{Metric: metric, Value: value, Time: now})
+		out = append(out, store.MetricReading{Metric: metric, Value: value, Time: now, Quality: "good"})
 	}
 	return out
 }
@@ -217,6 +217,30 @@ func TestCompliance_FailingMetric_OverallFail(t *testing.T) {
 	}
 	if body.Summary.Fail < 1 {
 		t.Errorf("fail count: got %d, want ≥ 1", body.Summary.Fail)
+	}
+}
+
+func TestCompliance_MissingLatestReading_RuleUnknownNotPass(t *testing.T) {
+	readings := allGoodReadings()
+	for i, r := range readings {
+		if r.Metric == "door_close_force_n" {
+			// The ingestor stores a placeholder 0 when the simulator field is absent;
+			// evaluated as a reading, 0 N would be a false pass.
+			readings[i].Value = 0
+			readings[i].Quality = "missing"
+		}
+	}
+	st := &fakeStore{readings: map[string][]store.MetricReading{"ELV-003": readings}}
+	w := get(t, newHandler(st), "/units/ELV-003/compliance")
+	var body api.ComplianceResponse
+	decodeJSON(t, w, &body)
+	for _, res := range body.Results {
+		if res.Metric == "door_close_force_n" && res.Status != rules.Unknown {
+			t.Errorf("door_close_force_n status = %q, want unknown", res.Status)
+		}
+	}
+	if body.Summary.Overall != rules.Unknown {
+		t.Errorf("overall = %q, want unknown", body.Summary.Overall)
 	}
 }
 
