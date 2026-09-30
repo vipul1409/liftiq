@@ -47,7 +47,7 @@ The deterministic pass, fail or unknown that LiftIQ derives for one rule from th
 _Avoid_: telemetry status (when meaning the whole result), check
 
 **Override**:
-The technician's own pass or fail call on a rule, made against a specific Rule result and recorded beside it rather than replacing it. If that Rule result changes, the technician must confirm the Override again before it counts. It can be made for any rule, including one whose result is unknown.
+The technician's own pass or fail call on a rule, made against a specific Rule result and recorded beside it rather than replacing it. If that Rule result's status later changes to something other than the Override, the technician must confirm the Override again before it counts, and the Inspection cannot be signed until they do. It can be made for any rule, including one whose result is unknown.
 _Avoid_: manual status, correction
 
 **Effective status**:
