@@ -22,7 +22,6 @@ export function SignatureScreen() {
 
   const { unitTag, complianceData, technician } = inspection;
   const asOf = complianceData.as_of;
-  const effectiveResults = inspection.getEffectiveResults();
   const allPhotos = inspection.getAllPhotos();
 
   async function handleSignAndGenerate() {
@@ -31,7 +30,9 @@ export function SignatureScreen() {
     setErrorMsg('');
 
     try {
-      const reportResults: ReportRuleResult[] = effectiveResults.map((r) => ({
+      // Send telemetry results untouched plus the overrides; the report-generator
+      // derives effective statuses and the summary.
+      const reportResults: ReportRuleResult[] = complianceData.results.map((r) => ({
         rule_id: r.rule_id,
         description: r.description,
         asme_ref: r.asme_ref,
@@ -41,10 +42,7 @@ export function SignatureScreen() {
         unit: r.unit,
         status: r.status,
         message: r.message,
-        overridden: inspection.overrides.has(r.rule_id),
       }));
-
-      const summary = inspection.getEffectiveSummary();
 
       const reportPhotos = allPhotos.map((p) => ({
         rule_id: p.ruleId,
@@ -59,12 +57,7 @@ export function SignatureScreen() {
         inspected_at: asOf,
         technician,
         results: reportResults,
-        summary: {
-          pass: summary.pass,
-          fail: summary.fail,
-          unknown: summary.unknown,
-          overall: summary.overall,
-        },
+        overrides: Object.fromEntries(inspection.overrides),
         photos: reportPhotos,
         signature_data_uri: signatureDataURI,
       };

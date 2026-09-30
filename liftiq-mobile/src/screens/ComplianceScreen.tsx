@@ -18,6 +18,7 @@ import { usePhotos } from '../store/photos';
 import { useVoice } from '../hooks/useVoice';
 import { useCamera } from '../hooks/useCamera';
 import { effectiveStatus } from '../store/overrides';
+import { applyOverrides, summarise } from '../utils/inspectionOutcome';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import type { RuleResult } from '../types/compliance';
 import type { VoiceIntent } from '../types/voice';
@@ -62,6 +63,13 @@ export function ComplianceScreen({ route, navigation }: Props) {
   const sections = useMemo(
     () => (data ? groupResults(data.results) : []),
     [data],
+  );
+
+  // Summary reflects technician overrides, matching what the signed report will show.
+  const overridesObj = useMemo(() => Object.fromEntries(overrides), [overrides]);
+  const effectiveSummary = useMemo(
+    () => (data ? summarise(applyOverrides(data.results, overridesObj)) : null),
+    [data, overridesObj],
   );
 
   // Flat ordered rule list for cursor navigation.
@@ -224,11 +232,11 @@ export function ComplianceScreen({ route, navigation }: Props) {
       <View style={styles.footer}>
         <View style={styles.footerCounts}>
           <Text style={styles.footerCount}>
-            <Text style={styles.countPass}>{data.summary.pass} pass</Text>
+            <Text style={styles.countPass}>{effectiveSummary!.pass} pass</Text>
             {'  '}
-            <Text style={styles.countFail}>{data.summary.fail} fail</Text>
+            <Text style={styles.countFail}>{effectiveSummary!.fail} fail</Text>
             {'  '}
-            <Text style={styles.countUnknown}>{data.summary.unknown} unknown</Text>
+            <Text style={styles.countUnknown}>{effectiveSummary!.unknown} unknown</Text>
           </Text>
         </View>
         <TouchableOpacity
@@ -237,15 +245,15 @@ export function ComplianceScreen({ route, navigation }: Props) {
             const allPhotos = Array.from(photos.values()).flat();
             navigation.navigate('Summary', {
               unitTag,
-              summary: data.summary,
               asOf: data.as_of,
               results: data.results,
+              overrides: overridesObj,
               photos: allPhotos,
               technician: 'Inspector',
             });
           }}
         >
-          <StatusBadge status={data.summary.overall} />
+          <StatusBadge status={effectiveSummary!.overall} />
           <Text style={styles.summaryBtnText}>View Summary</Text>
         </TouchableOpacity>
       </View>

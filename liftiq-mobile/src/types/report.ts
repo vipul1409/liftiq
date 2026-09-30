@@ -10,15 +10,10 @@ export interface ReportRuleResult {
   unit: string;
   status: RuleStatus;
   message: string;
-  overridden?: boolean;
 }
 
-export interface ReportSummary {
-  pass: number;
-  fail: number;
-  unknown: number;
-  overall: RuleStatus;
-}
+/** Technician's manual call on a rule; the report-generator applies it. */
+export type ReportOverride = 'pass' | 'fail';
 
 export interface ReportPhoto {
   rule_id: string;
@@ -32,8 +27,10 @@ export interface ReportRequest {
   unit_tag: string;
   inspected_at: string;   // ISO-8601
   technician: string;
+  /** Telemetry results exactly as the compliance engine returned them. */
   results: ReportRuleResult[];
-  summary: ReportSummary;
+  /** rule_id → technician override. The server derives effective status + summary. */
+  overrides: Record<string, ReportOverride>;
   photos: ReportPhoto[];
   signature_data_uri?: string;  // "data:image/svg+xml;base64,..."
 }

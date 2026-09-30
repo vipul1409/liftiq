@@ -26,7 +26,7 @@ type templateData struct {
 
 // RenderHTML renders the inspection report as an HTML string.
 // This is the only function that needs testing without Chrome.
-func RenderHTML(req Request) (string, error) {
+func RenderHTML(in Inspection) (string, error) {
 	tmpl, err := template.New("report").Funcs(template.FuncMap{
 		"statusClass": func(s Status) string {
 			switch s {
@@ -68,17 +68,17 @@ func RenderHTML(req Request) (string, error) {
 		return "", fmt.Errorf("parse report template: %w", err)
 	}
 
-	photosByRule := PhotosByRule(req.Photos)
+	photosByRule := PhotosByRule(in.Photos)
 	data := templateData{
-		UnitTag:          req.UnitTag,
-		InspectedAt:      req.InspectedAt.UTC().Format("2006-01-02 15:04:05 UTC"),
+		UnitTag:          in.UnitTag,
+		InspectedAt:      in.InspectedAt.UTC().Format("2006-01-02 15:04:05 UTC"),
 		GeneratedAt:      time.Now().UTC().Format("2006-01-02 15:04:05 UTC"),
-		Technician:       req.Technician,
-		Summary:          req.Summary,
-		Groups:           GroupBySubsystem(req.Results),
+		Technician:       in.Technician,
+		Summary:          in.Summary,
+		Groups:           GroupBySubsystem(in.Rows),
 		PhotosByRule:     photosByRule,
-		HasPhotos:        len(req.Photos) > 0,
-		SignatureDataURI: toTemplateURL(req.SignatureDataURI),
+		HasPhotos:        len(in.Photos) > 0,
+		SignatureDataURI: toTemplateURL(in.SignatureDataURI),
 	}
 
 	var buf bytes.Buffer
@@ -238,16 +238,16 @@ const reportHTML = `<!DOCTYPE html>
   </thead>
   <tbody>
   {{range .Results}}
-  <tr class="{{if eq .Status "fail"}}row-fail{{end}}">
+  <tr class="{{if eq .Effective "fail"}}row-fail{{end}}">
     <td class="rule-id">{{.RuleID}}</td>
     <td>
       <div class="rule-desc">{{.Description}}{{if .Overridden}}<span class="override-tag">(manual)</span>{{end}}</div>
       <div class="rule-ref">{{.ASMERef}}</div>
     </td>
-    <td><span class="badge {{statusClass .Status}}">{{statusLabel .Status}}</span></td>
-    <td>{{formatFloat .Value}} {{.Unit}}</td>
+    <td><span class="badge {{statusClass .Effective}}">{{statusLabel .Effective}}</span></td>
+    <td>{{if eq .Status "unknown"}}—{{else}}{{formatFloat .Value}} {{.Unit}}{{end}}</td>
     <td>{{formatFloat .Threshold}} {{.Unit}}</td>
-    <td class="rule-msg">{{.Message}}</td>
+    <td class="rule-msg">{{if .Overridden}}<span class="override-tag">Technician: {{statusLabel .Effective}} · Telemetry: {{statusLabel .Status}}</span><br>{{end}}{{.Message}}</td>
   </tr>
   {{end}}
   </tbody>

@@ -12,13 +12,13 @@ import * as Sharing from 'expo-sharing';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SignatureCapture } from '../components/SignatureCapture';
 import type { RootStackParamList } from '../navigation/AppNavigator';
-import type { ReportRequest, ReportRuleResult } from '../types/report';
 import { generateReport } from '../api/report';
+import { buildReportRequest } from '../utils/inspectionOutcome';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Signature'>;
 
 export function SignatureScreen({ route, navigation }: Props) {
-  const { unitTag, summary, asOf, results, photos, technician } = route.params;
+  const { unitTag, asOf, results, overrides, photos, technician } = route.params;
 
   const [hasStrokes, setHasStrokes] = useState(false);
   const [signatureDataURI, setSignatureDataURI] = useState('');
@@ -48,32 +48,15 @@ export function SignatureScreen({ route, navigation }: Props) {
         }),
       );
 
-      const reportResults: ReportRuleResult[] = results.map((r) => ({
-        rule_id: r.rule_id,
-        description: r.description,
-        asme_ref: r.asme_ref,
-        metric: r.metric,
-        value: r.value ?? 0,
-        threshold: r.threshold,
-        unit: r.unit,
-        status: r.status,
-        message: r.message,
-      }));
-
-      const req: ReportRequest = {
-        unit_tag: unitTag,
-        inspected_at: asOf,
+      const req = buildReportRequest({
+        unitTag,
+        inspectedAt: asOf,
         technician,
-        results: reportResults,
-        summary: {
-          pass: summary.pass,
-          fail: summary.fail,
-          unknown: summary.unknown,
-          overall: summary.overall,
-        },
+        results,
+        overrides,
         photos: reportPhotos,
-        signature_data_uri: signatureDataURI,
-      };
+        signatureDataURI,
+      });
 
       const pdfBase64 = await generateReport(req);
 
