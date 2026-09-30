@@ -17,7 +17,7 @@ import { useOverrides } from '../store/overrides';
 import { usePhotos } from '../store/photos';
 import { useVoice } from '../hooks/useVoice';
 import { useCamera } from '../hooks/useCamera';
-import { effectiveStatus } from '../store/overrides';
+import { effectiveStatus, overridesNeedingReview } from '../store/overrides';
 import { applyOverrides, summarise } from '../utils/inspectionOutcome';
 import { groupBySubsystem } from '../utils/groupBySubsystem';
 import type { RootStackParamList } from '../navigation/AppNavigator';
@@ -28,7 +28,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Compliance'>;
 export function ComplianceScreen({ route, navigation }: Props) {
   const { unitTag } = route.params;
   const { data, loading, error, refetch } = useCompliance(unitTag);
-  const { overrides, setOverride, clearOverride } = useOverrides();
+  const { overrides, setOverride, clearOverride, reconcile } = useOverrides();
   const { photos, addPhoto, removePhoto, getPhotos } = usePhotos();
   const camera = useCamera();
 
@@ -37,11 +37,38 @@ export function ComplianceScreen({ route, navigation }: Props) {
     [data],
   );
 
+  // Each new Compliance snapshot re-anchors Overrides it now agrees with.
+  useEffect(() => {
+    if (data) reconcile(data.results);
+  }, [data, reconcile]);
+
   // Summary reflects technician overrides, matching what the signed report will show.
-  const overridesObj = useMemo(() => Object.fromEntries(overrides), [overrides]);
   const effectiveSummary = useMemo(
-    () => (data ? summarise(applyOverrides(data.results, overridesObj)) : null),
-    [data, overridesObj],
+    () => (data ? summarise(applyOverrides(data.results, overrides)) : null),
+    [data, overrides],
+  );
+
+  // Overrides whose Rule result changed to disagree with them block signing.
+  const reviewIds = useMemo(
+    () => (data ? overridesNeedingReview(overrides, data.results) : []),
+    [data, overrides],
+  );
+
+  // Record a call against the rule's current result; also used to re-confirm.
+  const overrideRule = useCallback(
+    (ruleId: string, status: 'pass' | 'fail') => {
+      const rule = data?.results.find((r) => r.rule_id === ruleId);
+      if (rule) setOverride(ruleId, status, rule.status);
+    },
+    [data, setOverride],
+  );
+
+  const confirmOverride = useCallback(
+    (ruleId: string) => {
+      const o = overrides[ruleId];
+      if (o) overrideRule(ruleId, o.status);
+    },
+    [overrides, overrideRule],
   );
 
   // Flat ordered rule list for cursor navigation.
@@ -76,7 +103,7 @@ export function ComplianceScreen({ route, navigation }: Props) {
     advancedByVoice.current = false;
     const rule = flatRules.find((r) => r.rule_id === activeRuleId);
     if (!rule) return;
-    const status = effectiveStatus(rule.status, overrides.get(rule.rule_id));
+    const status = effectiveStatus(rule.status, overrides[rule.rule_id]);
     setReadText(`${rule.rule_id}: ${rule.description}. Status: ${status}.`);
   }, [activeRuleId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -91,11 +118,11 @@ export function ComplianceScreen({ route, navigation }: Props) {
       if (!activeRuleId) return;
       switch (intent) {
         case 'pass':
-          setOverride(activeRuleId, 'pass');
+          overrideRule(activeRuleId, 'pass');
           setReadText('Marked pass.');
           break;
         case 'fail':
-          setOverride(activeRuleId, 'fail');
+          overrideRule(activeRuleId, 'fail');
           setReadText('Marked fail. Opening camera for evidence.');
           capturePhoto(activeRuleId);
           break;
@@ -118,7 +145,7 @@ export function ComplianceScreen({ route, navigation }: Props) {
           break;
       }
     },
-    [activeRuleId, setOverride, advanceCursor, capturePhoto],
+    [activeRuleId, overrideRule, advanceCursor, capturePhoto],
   );
 
   const voice = useVoice({
@@ -126,6 +153,16 @@ export function ComplianceScreen({ route, navigation }: Props) {
     readText,
     enabled: !loading && !!data,
   });
+
+  // With voice enabled, announce when a refresh flags Overrides for review.
+  const prevReviewCount = useRef(0);
+  useEffect(() => {
+    const n = reviewIds.length;
+    if (n > prevReviewCount.current && voice.hasPermission) {
+      setReadText(`${n} override${n === 1 ? ' needs' : 's need'} review.`);
+    }
+    prevReviewCount.current = n;
+  }, [reviewIds.length, voice.hasPermission]);
 
   if (loading) {
     return (
@@ -158,9 +195,10 @@ export function ComplianceScreen({ route, navigation }: Props) {
         renderItem={({ item }) => (
           <RuleRow
             result={item}
-            override={overrides.get(item.rule_id)}
-            onOverride={setOverride}
+            override={overrides[item.rule_id]}
+            onOverride={overrideRule}
             onClearOverride={clearOverride}
+            onConfirmOverride={confirmOverride}
             isActive={item.rule_id === activeRuleId}
             photos={getPhotos(item.rule_id)}
             onCapturePhoto={camera.hasPermission ? capturePhoto : undefined}
@@ -210,16 +248,22 @@ export function ComplianceScreen({ route, navigation }: Props) {
             {'  '}
             <Text style={styles.countUnknown}>{effectiveSummary!.unknown} unknown</Text>
           </Text>
+          {reviewIds.length > 0 && (
+            <Text style={styles.reviewCount}>
+              {reviewIds.length} override{reviewIds.length === 1 ? ' needs' : 's need'} review
+            </Text>
+          )}
         </View>
         <TouchableOpacity
-          style={styles.summaryBtn}
+          style={[styles.summaryBtn, reviewIds.length > 0 && styles.summaryBtnDisabled]}
+          disabled={reviewIds.length > 0}
           onPress={() => {
             const allPhotos = Array.from(photos.values()).flat();
             navigation.navigate('Summary', {
               unitTag,
               asOf: data.as_of,
               results: data.results,
-              overrides: overridesObj,
+              overrides,
               photos: allPhotos,
               technician: 'Inspector',
             });
@@ -356,6 +400,15 @@ const styles = StyleSheet.create({
   countUnknown: {
     color: '#9ca3af',
     fontWeight: '600',
+  },
+  reviewCount: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#b45309',
+    marginTop: 2,
+  },
+  summaryBtnDisabled: {
+    opacity: 0.4,
   },
   summaryBtn: {
     flexDirection: 'row',

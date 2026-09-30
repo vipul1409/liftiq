@@ -1,4 +1,4 @@
-.PHONY: dev build preview typecheck clean install
+.PHONY: dev build preview typecheck test clean install
 
 install:
 	npm install
@@ -14,6 +14,9 @@ preview:
 
 typecheck:
 	npm run typecheck
+
+test:
+	npm test
 
 clean:
 	rm -rf dist node_modules

@@ -1,15 +1,17 @@
 import { useRef } from 'react';
 import { StatusBadge } from './StatusBadge';
 import { PhotoStrip } from './PhotoStrip';
-import { effectiveStatus } from '../hooks/useOverrides';
+import { effectiveStatus, needsReview, type Override } from '../utils/overrides';
 import { fileToDataURI, type CapturedPhoto } from '../hooks/usePhotos';
 import type { RuleResult } from '../types/compliance';
 
 interface Props {
   result: RuleResult;
-  override: 'pass' | 'fail' | undefined;
+  override: Override | undefined;
   onOverride: (ruleId: string, status: 'pass' | 'fail') => void;
   onClearOverride: (ruleId: string) => void;
+  /** Re-confirm an Override whose Rule result has changed. */
+  onConfirmOverride: (ruleId: string) => void;
   isActive?: boolean;
   photos?: CapturedPhoto[];
   onAddPhoto?: (photo: CapturedPhoto) => void;
@@ -21,12 +23,14 @@ export function RuleRow({
   override,
   onOverride,
   onClearOverride,
+  onConfirmOverride,
   isActive = false,
   photos = [],
   onAddPhoto,
   onRemovePhoto,
 }: Props) {
   const effective = effectiveStatus(result.status, override);
+  const review = override !== undefined && needsReview(override, result.status);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
@@ -69,8 +73,29 @@ export function RuleRow({
         <span className="text-[11px] text-gray-400 font-semibold tracking-wide">
           {result.rule_id}
         </span>
-        <StatusBadge status={effective} overridden={override !== undefined} />
+        <StatusBadge status={effective} overridden={override !== undefined && !review} />
       </div>
+      {review && (
+        <div className="mb-2 rounded-md border border-amber-300 bg-amber-50 p-2">
+          <p className="text-[13px] font-semibold text-amber-800 mb-1.5">
+            Result changed: was {override.against}, now {result.status}. Your override ({override.status}) needs confirming.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => onConfirmOverride(result.rule_id)}
+              className="px-3 py-1 rounded-md border text-xs font-semibold text-gray-700 border-amber-300 bg-white hover:bg-amber-100"
+            >
+              Confirm {override.status}
+            </button>
+            <button
+              onClick={() => onClearOverride(result.rule_id)}
+              className="px-3 py-1 rounded-md border text-xs font-semibold text-gray-700 border-gray-300 bg-white hover:bg-gray-100"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
       <p className="text-[15px] font-semibold text-gray-900 mb-0.5">
         {result.description}
       </p>
@@ -86,7 +111,7 @@ export function RuleRow({
         <button
           onClick={() => onOverride(result.rule_id, 'pass')}
           className={`px-3 py-1 rounded-md border text-xs font-semibold text-gray-700 border-green-300 bg-green-50 hover:bg-green-100 ${
-            override === 'pass' ? 'opacity-50' : ''
+            override?.status === 'pass' ? 'opacity-50' : ''
           }`}
         >
           Override Pass
@@ -94,7 +119,7 @@ export function RuleRow({
         <button
           onClick={() => onOverride(result.rule_id, 'fail')}
           className={`px-3 py-1 rounded-md border text-xs font-semibold text-gray-700 border-red-300 bg-red-50 hover:bg-red-100 ${
-            override === 'fail' ? 'opacity-50' : ''
+            override?.status === 'fail' ? 'opacity-50' : ''
           }`}
         >
           Override Fail

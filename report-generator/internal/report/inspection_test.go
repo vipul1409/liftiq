@@ -2,6 +2,7 @@ package report
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -47,12 +48,13 @@ func TestResolve_AppliesOverridesAndDerivesSummary(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			req := Request{UnitTag: "ELV-003", Results: allPassResults(), Overrides: tc.overrides}
+			req := Request{UnitTag: "ELV-003", Results: allPassResults()}
 			for i, r := range req.Results {
 				if s, ok := tc.telemetry[r.RuleID]; ok {
 					req.Results[i].Status = s
 				}
 			}
+			req.Overrides = anchored(req.Results, tc.overrides)
 
 			in, err := Resolve(req)
 			if err != nil {
@@ -85,13 +87,20 @@ func TestResolve_RejectsInvalidRequests(t *testing.T) {
 		{"missing unit tag", func(r *Request) { r.UnitTag = "" }},
 		{"empty results", func(r *Request) { r.Results = nil }},
 		{"override for unknown rule", func(r *Request) {
-			r.Overrides = map[string]Status{"ASME-999": StatusPass}
+			r.Overrides = map[string]Override{"ASME-999": {Status: StatusPass, Against: StatusPass}}
 		}},
 		{"override to unknown", func(r *Request) {
-			r.Overrides = map[string]Status{"ASME-001": StatusUnknown}
+			r.Overrides = map[string]Override{"ASME-001": {Status: StatusUnknown, Against: StatusPass}}
 		}},
 		{"override to garbage", func(r *Request) {
-			r.Overrides = map[string]Status{"ASME-001": "maybe"}
+			r.Overrides = map[string]Override{"ASME-001": {Status: "maybe", Against: StatusPass}}
+		}},
+		{"override made against a different result", func(r *Request) {
+			// Made while ASME-001 was unknown; the submitted result is now pass.
+			r.Overrides = map[string]Override{"ASME-001": {Status: StatusFail, Against: StatusUnknown}}
+		}},
+		{"override missing its anchor", func(r *Request) {
+			r.Overrides = map[string]Override{"ASME-001": {Status: StatusFail}}
 		}},
 	}
 
@@ -105,5 +114,36 @@ func TestResolve_RejectsInvalidRequests(t *testing.T) {
 				t.Fatalf("err = %v, want *ValidationError", err)
 			}
 		})
+	}
+}
+
+// anchored builds Overrides made against each rule's current result status,
+// i.e. overrides the technician has confirmed against this exact evidence.
+func anchored(results []RuleResult, calls map[string]Status) map[string]Override {
+	if calls == nil {
+		return nil
+	}
+	current := make(map[string]Status, len(results))
+	for _, r := range results {
+		current[r.RuleID] = r.Status
+	}
+	out := make(map[string]Override, len(calls))
+	for id, s := range calls {
+		out[id] = Override{Status: s, Against: current[id]}
+	}
+	return out
+}
+
+func TestResolve_RejectsOverrideAgainstStaleResultWithReason(t *testing.T) {
+	req := Request{UnitTag: "ELV-003", Results: allPassResults()}
+	req.Overrides = map[string]Override{"ASME-011": {Status: StatusFail, Against: StatusUnknown}}
+	_, err := Resolve(req)
+	if err == nil {
+		t.Fatal("want error for override made against a different result")
+	}
+	for _, want := range []string{"ASME-011", "unknown", "pass", "re-confirm"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q does not mention %q", err, want)
+		}
 	}
 }

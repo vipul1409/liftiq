@@ -47,18 +47,25 @@ type Photo struct {
 	Longitude *float64 `json:"longitude"`
 }
 
+// Override is the technician's call on one rule, together with the Rule
+// result status it was made (or last re-confirmed) against.
+type Override struct {
+	Status  Status `json:"status"`  // "pass" or "fail"
+	Against Status `json:"against"` // the rule's result status when the call was made
+}
+
 // Request is the JSON body for POST /reports.
 //
 // Results carry the telemetry status exactly as the compliance engine returned
-// it. Overrides maps rule ID → the technician's manual call ("pass" or "fail").
-// The report's effective statuses and summary are derived by Resolve; clients
-// do not send a summary.
+// it. Overrides maps rule ID → the technician's call and the result it was made
+// against. The report's effective statuses and summary are derived by Resolve;
+// clients do not send a summary.
 type Request struct {
 	UnitTag          string            `json:"unit_tag"`
 	InspectedAt      time.Time         `json:"inspected_at"`
 	Technician       string            `json:"technician"`
 	Results          []RuleResult      `json:"results"`
-	Overrides        map[string]Status `json:"overrides"`
+	Overrides        map[string]Override `json:"overrides"`
 	Photos           []Photo           `json:"photos"`
 	SignatureDataURI string            `json:"signature_data_uri,omitempty"` // "data:image/svg+xml;base64,..."
 }
